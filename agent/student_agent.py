@@ -9,7 +9,7 @@ from datetime import datetime
 # ----------------------------------------------------------
 
 # Replace this with admin laptop IP
-ADMIN_SERVER_IP = "192.168.0.100"      # CHANGE THIS
+ADMIN_SERVER_IP = "10.107.208.5"      # CHANGE THIS
 ADMIN_SERVER_PORT = 8000
 
 API_URL = f"http://{ADMIN_SERVER_IP}:{ADMIN_SERVER_PORT}/activity"
