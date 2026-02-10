@@ -5,62 +5,101 @@ import time
 from datetime import datetime
 
 # ----------------------------------------------------------
-# STUDENT AGENT - MEMBER 2 MODULE
+# MEMBER 2 - STUDENT MONITORING AGENT
 # ----------------------------------------------------------
 
-# Replace this with admin laptop IP
-ADMIN_SERVER_IP = "192.168.0.100"      # CHANGE THIS
+ADMIN_SERVER_IP = "192.168.0.100"     # <-- CHANGE THIS
 ADMIN_SERVER_PORT = 8000
 
 API_URL = f"http://{ADMIN_SERVER_IP}:{ADMIN_SERVER_PORT}/activity"
-SEND_INTERVAL = 5   # send every 5 seconds
+SEND_INTERVAL = 5   # seconds
 
 
-def collect_system_data():
-    """Collect running processes + network usage"""
+# ----------------------------------------------------------
+# Get active network destinations (IP + domain)
+# ----------------------------------------------------------
+def get_active_destinations():
+    destinations = []
+
     try:
-        net_info = psutil.net_io_counters()
-        proc_names = []
+        connections = psutil.net_connections(kind='inet')
+
+        for conn in connections:
+            if conn.raddr:  # remote address exists
+                ip = conn.raddr.ip
+                port = conn.raddr.port
+
+                # Try reverse DNS lookup (domain)
+                try:
+                    domain = socket.gethostbyaddr(ip)[0]
+                except:
+                    domain = None  # if DNS fails, only IP is sent
+
+                destinations.append({
+                    "ip": ip,
+                    "port": port,
+                    "domain": domain
+                })
+
+        return destinations
+
+    except Exception as e:
+        print("Error capturing destinations:", e)
+        return []
+
+
+# ----------------------------------------------------------
+# Collect system data (apps, network usage, etc.)
+# ----------------------------------------------------------
+def collect_system_data():
+    try:
+        net = psutil.net_io_counters()
+        processes = []
 
         for proc in psutil.process_iter(['name']):
             try:
-                if proc.info['name']:
-                    proc_names.append(proc.info['name'])
+                if proc.info["name"]:
+                    processes.append(proc.info["name"])
             except:
-                pass  # skip processes we cannot read
+                pass
 
         return {
             "hostname": socket.gethostname(),
             "timestamp": str(datetime.now()),
-            "bytes_sent": net_info.bytes_sent,
-            "bytes_recv": net_info.bytes_recv,
-            "processes": proc_names[:25]
+            "bytes_sent": net.bytes_sent,
+            "bytes_recv": net.bytes_recv,
+            "processes": processes[:25],
+            "destinations": get_active_destinations()
         }
 
-    except Exception as error:
-        print("Error collecting data:", error)
+    except Exception as e:
+        print("Error collecting system data:", e)
         return None
 
 
+# ----------------------------------------------------------
+# Send data to admin backend
+# ----------------------------------------------------------
 def send_to_admin(data):
-    """Send data to backend API"""
     try:
         response = requests.post(API_URL, json=data, timeout=5)
         if response.status_code == 200:
             print(f"[SENT] {datetime.now()}")
         else:
-            print("[WARN] server returned:", response.status_code)
+            print("[WARN] Server responded:", response.status_code)
+    except:
+        print("[ERROR] Could not reach admin server.")
 
-    except Exception:
-        print("[ERROR] Cannot reach admin server.")
 
-
+# ----------------------------------------------------------
+# MAIN LOOP
+# ----------------------------------------------------------
 if __name__ == "__main__":
-    print("Student Agent Started (Member 2)...\n")
+    print("Student Agent Started (Member 2)\n")
 
     while True:
-        collected = collect_system_data()
-        if collected:
-            send_to_admin(collected)
+        payload = collect_system_data()
+        if payload:
+            send_to_admin(payload)
 
         time.sleep(SEND_INTERVAL)
