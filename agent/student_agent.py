@@ -5,35 +5,39 @@ import time
 from datetime import datetime
 
 # ----------------------------------------------------------
-# MEMBER 2 - STUDENT MONITORING AGENT
+# STUDENT AGENT - FINAL VERSION (Matches Prompt Exactly)
 # ----------------------------------------------------------
 
-ADMIN_SERVER_IP = "192.168.0.100"     # <-- CHANGE THIS
-ADMIN_SERVER_PORT = 8000
+# ----------------------------------------------------------
+# STUDENT AGENT - MEMBER 2 MODULE
+# ----------------------------------------------------------
 
-API_URL = f"http://{ADMIN_SERVER_IP}:{ADMIN_SERVER_PORT}/activity"
-SEND_INTERVAL = 5   # seconds
+# BACKEND SERVER IP (NOT ADMIN LAPTOP)
+BACKEND_SERVER_IP = "10.70.248.252"   # IP of machine running FastAPI
+BACKEND_SERVER_PORT = 8000
 
+API_URL = f"http://{BACKEND_SERVER_IP}:{BACKEND_SERVER_PORT}/activity"
+SEND_INTERVAL = 5   # send every 5 seconds
 
 # ----------------------------------------------------------
-# Get active network destinations (IP + domain)
+# Network destinations (IP + domain only)
 # ----------------------------------------------------------
 def get_active_destinations():
     destinations = []
 
     try:
-        connections = psutil.net_connections(kind='inet')
+        conns = psutil.net_connections(kind='inet')
 
-        for conn in connections:
-            if conn.raddr:  # remote address exists
+        for conn in conns:
+            if conn.raddr:  # remote end exists
                 ip = conn.raddr.ip
                 port = conn.raddr.port
 
-                # Try reverse DNS lookup (domain)
+                # domain-level resolution (no deep inspection)
                 try:
                     domain = socket.gethostbyaddr(ip)[0]
                 except:
-                    domain = None  # if DNS fails, only IP is sent
+                    domain = None
 
                 destinations.append({
                     "ip": ip,
@@ -41,21 +45,20 @@ def get_active_destinations():
                     "domain": domain
                 })
 
-        return destinations
-
     except Exception as e:
-        print("Error capturing destinations:", e)
-        return []
+        print("Destination error:", e)
+
+    return destinations
 
 
 # ----------------------------------------------------------
-# Collect system data (apps, network usage, etc.)
+# System activity (hostname, processes, network usage)
 # ----------------------------------------------------------
 def collect_system_data():
     try:
         net = psutil.net_io_counters()
-        processes = []
 
+        processes = []
         for proc in psutil.process_iter(['name']):
             try:
                 if proc.info["name"]:
@@ -64,42 +67,47 @@ def collect_system_data():
                 pass
 
         return {
+            "student_id": socket.gethostname(),  # unique identity
             "hostname": socket.gethostname(),
-            "timestamp": str(datetime.now()),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
             "bytes_sent": net.bytes_sent,
-            "bytes_recv": net.bytes_recv,
-            "processes": processes[:25],
-            "destinations": get_active_destinations()
+            "bytes_received": net.bytes_recv,
+
+            "running_processes": processes[:25],  # safe limit
+            "accessed_destinations": get_active_destinations()
         }
 
     except Exception as e:
-        print("Error collecting system data:", e)
+        print("System data error:", e)
         return None
 
 
 # ----------------------------------------------------------
-# Send data to admin backend
+# Send to backend (REST API, resilient)
 # ----------------------------------------------------------
-def send_to_admin(data):
+def send_to_backend(payload):
     try:
-        response = requests.post(API_URL, json=data, timeout=5)
+        response = requests.post(API_URL, json=payload, timeout=5)
+
         if response.status_code == 200:
-            print(f"[SENT] {datetime.now()}")
+            print("[OK] Sent", payload["timestamp"])
         else:
-            print("[WARN] Server responded:", response.status_code)
-    except:
-        print("[ERROR] Could not reach admin server.")
+            print("[WARN] Backend error:", response.status_code)
+
+    except Exception:
+        print("[ERROR] Backend unreachable")
 
 
 # ----------------------------------------------------------
-# MAIN LOOP
+# Passive continuous loop
 # ----------------------------------------------------------
 if __name__ == "__main__":
-    print("Student Agent Started (Member 2)\n")
+    print("Student Agent Running (Final Prompt Version)...")
 
     while True:
-        payload = collect_system_data()
-        if payload:
-            send_to_admin(payload)
+        data = collect_system_data()
+        if data:
+            send_to_backend(data)
 
         time.sleep(SEND_INTERVAL)
