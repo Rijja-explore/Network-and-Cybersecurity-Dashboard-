@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import StudentsTable from '../components/StudentsTable';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getStudents, blockStudent } from '../services/api';
+import { getStudents, blockStudent, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
 
 const Students = () => {
   const [students, setStudents] = useState([]);
@@ -58,6 +58,26 @@ const Students = () => {
     }
   };
 
+  const handleBlockWebsite = async (studentId, domain) => {
+    try {
+      const result = await blockDomainOnStudent(studentId, domain, 'Blocked by admin from dashboard');
+      alert(`✅ Block command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will enforce this block within a few seconds.`);
+      fetchData(); // Refresh the list
+    } catch (error) {
+      alert(`❌ Failed to block website: ${error}`);
+    }
+  };
+
+  const handleUnblockWebsite = async (studentId, domain) => {
+    try {
+      const result = await unblockDomainOnStudent(studentId, domain, 'Unblocked by admin from dashboard');
+      alert(`✅ Unblock command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will restore access within a few seconds.`);
+      fetchData(); // Refresh the list
+    } catch (error) {
+      alert(`❌ Failed to unblock website: ${error}`);
+    }
+  };
+
   const totalBandwidth = students.reduce((sum, student) => sum + (student.bandwidth || 0), 0);
   const formatBandwidth = (bytes) => {
     const gb = bytes / 1024 / 1024 / 1024;
@@ -108,7 +128,12 @@ const Students = () => {
         </div>
 
         {/* Students Table */}
-        <StudentsTable students={students} onBlock={handleBlockStudent} />
+        <StudentsTable 
+          students={students} 
+          onBlock={handleBlockStudent}
+          onBlockWebsite={handleBlockWebsite}
+          onUnblockWebsite={handleUnblockWebsite}
+        />
       </div>
     </div>
   );

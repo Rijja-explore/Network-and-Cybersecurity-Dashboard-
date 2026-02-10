@@ -17,7 +17,7 @@ const ProtectedRoute = ({ children }) => {
 // Layout Component with Sidebar
 const DashboardLayout = ({ children }) => {
   return (
-    <div className="flex min-h-screen bg-soc-dark">
+    <div className="flex min-h-screen bg-cyber-dark">
       <Sidebar />
       {children}
     </div>

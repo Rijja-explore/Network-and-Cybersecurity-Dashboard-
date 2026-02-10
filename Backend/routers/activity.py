@@ -57,20 +57,32 @@ async def submit_activity(activity: ActivityRequest) -> ActivityResponse:
         HTTPException: If database operation fails
     """
     try:
-        # 📥 TEMPORARY: Print for cross-laptop testing
+        # Extract domains from destinations
+        domains = []
+        if activity.destinations:
+            domains = [d.get('domain') or d.get('ip') for d in activity.destinations if d.get('domain') or d.get('ip')]
+        
+        # Combine with legacy websites field
+        all_websites = list(set(domains + (activity.websites or [])))
+        
+        # 📥 Print for monitoring
         print("📥 Activity received:", {
             "hostname": activity.hostname,
             "bytes_sent": activity.bytes_sent,
             "bytes_recv": activity.bytes_recv,
-            "processes": activity.processes[:3] if len(activity.processes) > 3 else activity.processes,  # Show first 3 processes
-            "total_processes": len(activity.processes)
+            "processes": activity.processes[:3] if len(activity.processes) > 3 else activity.processes,
+            "destinations": activity.destinations[:3] if len(activity.destinations) > 3 else activity.destinations,
+            "websites": all_websites[:3] if len(all_websites) > 3 else all_websites,
+            "total_processes": len(activity.processes),
+            "total_destinations": len(activity.destinations),
+            "agent_time": activity.timestamp
         })
         
         # Log incoming activity
         logger.info(
             f"Received activity from {activity.hostname}: "
             f"{activity.bytes_sent + activity.bytes_recv} bytes, "
-            f"{len(activity.processes)} processes"
+            f"{len(activity.processes)} processes, {len(activity.destinations)} destinations"
         )
         
         # Store activity in database
@@ -78,7 +90,10 @@ async def submit_activity(activity: ActivityRequest) -> ActivityResponse:
             hostname=activity.hostname,
             bytes_sent=activity.bytes_sent,
             bytes_recv=activity.bytes_recv,
-            processes=activity.processes
+            processes=activity.processes,
+            websites=all_websites,
+            destinations=activity.destinations,
+            agent_timestamp=activity.timestamp
         )
         
         # Check for policy violations

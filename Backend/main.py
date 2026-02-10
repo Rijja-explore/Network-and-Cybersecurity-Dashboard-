@@ -4,7 +4,7 @@ Department Network Monitoring and Cybersecurity Dashboard Backend.
 
 This is a legal, admin-controlled monitoring system for college network management.
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -19,6 +19,8 @@ from models import HealthCheckResponse, ErrorResponse
 from routers import activity, alerts, stats
 from routers.firewall import router as firewall_router
 from routers.auth import router as auth_router
+from routers.policy import router as policy_router
+from routers.commands import router as commands_router
 
 # Configure logging
 logging.basicConfig(
@@ -198,12 +200,25 @@ async def get_student_logs():
             # Get top processes (limit to 5 for display)
             top_processes = activity['process_list'][:5] if activity['process_list'] else []
             
-            # Format timestamp
+            # Extract websites from destinations (domain or IP)
+            destinations = activity.get('destinations', []) or []
+            websites_from_destinations = []
+            for dest in destinations:
+                if dest.get('domain'):
+                    websites_from_destinations.append(dest['domain'])
+                elif dest.get('ip'):
+                    websites_from_destinations.append(f"{dest['ip']}:{dest.get('port', '')}")
+            
+            # Combine with legacy website list
+            all_websites = list(set(websites_from_destinations + (activity.get('website_list', []) or [])))
+            
+            # Format timestamp (prefer agent timestamp if available)
+            timestamp_str = activity.get('agent_timestamp') or activity['timestamp']
             try:
-                timestamp_obj = datetime.fromisoformat(activity['timestamp'])
+                timestamp_obj = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                 formatted_time = timestamp_obj.strftime("%Y-%m-%d %H:%M")
             except:
-                formatted_time = activity['timestamp']
+                formatted_time = str(timestamp_str)[:16]
             
             formatted_logs.append({
                 "student_id": activity['hostname'],
@@ -216,8 +231,13 @@ async def get_student_logs():
                 "apps": top_processes,
                 "active_apps": top_processes,
                 "processes": activity['process_list'],
+                "websites": all_websites[:10],  # Top 10 websites
+                "all_websites": all_websites,  # All websites for detail view
+                "destinations": destinations[:10],  # Top 10 destinations with IP/port/domain
+                "all_destinations": destinations,  # All destinations
                 "timestamp": formatted_time,
                 "raw_timestamp": activity['timestamp'],
+                "agent_timestamp": activity.get('agent_timestamp'),
                 "activity_id": activity['id']
             })
         
@@ -260,12 +280,134 @@ async def get_student_logs():
         ]
 
 
+@app.post(
+    "/admin/block-domain",
+    tags=["Admin"],
+    summary="Block domain on student machine",
+    description="Admin endpoint to remotely block a website on a specific student laptop"
+)
+async def block_domain_on_student(request: dict):
+    """
+    Issue a block command for a student machine.
+    The student agent will poll and execute this command locally.
+    
+    Request body:
+    {
+        "student_id": "STUDENT-PC-001",
+        "domain": "youtube.com",
+        "reason": "Unauthorized access"
+    }
+    
+    Returns:
+        Success confirmation
+    """
+    try:
+        student_id = request.get('student_id')
+        domain = request.get('domain')
+        reason = request.get('reason', 'Admin policy violation')
+        
+        if not student_id or not domain:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="student_id and domain are required"
+            )
+        
+        # Add command to queue
+        command_id = db.add_command(
+            student_id=student_id,
+            action="BLOCK_DOMAIN",
+            domain=domain,
+            reason=reason
+        )
+        
+        logger.info(f"Admin issued BLOCK command: {domain} for student {student_id}")
+        
+        return {
+            "success": True,
+            "message": f"Block command issued for {domain} on {student_id}",
+            "command_id": command_id,
+            "student_id": student_id,
+            "domain": domain
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error issuing block command: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to issue block command: {str(e)}"
+        )
+
+
+@app.post(
+    "/admin/unblock-domain",
+    tags=["Admin"],
+    summary="Unblock domain on student machine",
+    description="Admin endpoint to remotely unblock a website on a specific student laptop"
+)
+async def unblock_domain_on_student(request: dict):
+    """
+    Issue an unblock command for a student machine.
+    The student agent will poll and execute this command locally.
+    
+    Request body:
+    {
+        "student_id": "STUDENT-PC-001",
+        "domain": "youtube.com",
+        "reason": "Access restored"
+    }
+    
+    Returns:
+        Success confirmation
+    """
+    try:
+        student_id = request.get('student_id')
+        domain = request.get('domain')
+        reason = request.get('reason', 'Admin unblock request')
+        
+        if not student_id or not domain:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="student_id and domain are required"
+            )
+        
+        # Add command to queue
+        command_id = db.add_command(
+            student_id=student_id,
+            action="UNBLOCK_DOMAIN",
+            domain=domain,
+            reason=reason
+        )
+        
+        logger.info(f"Admin issued UNBLOCK command: {domain} for student {student_id}")
+        
+        return {
+            "success": True,
+            "message": f"Unblock command issued for {domain} on {student_id}",
+            "command_id": command_id,
+            "student_id": student_id,
+            "domain": domain
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error issuing unblock command: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to issue unblock command: {str(e)}"
+        )
+
+
 # Include routers
 app.include_router(auth_router)
 app.include_router(activity.router)
 app.include_router(alerts.router)
 app.include_router(stats.router)
 app.include_router(firewall_router)
+app.include_router(policy_router)
+app.include_router(commands_router)
 
 
 # For debugging: Log all registered routes

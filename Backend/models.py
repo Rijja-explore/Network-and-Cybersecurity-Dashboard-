@@ -38,6 +38,18 @@ class ActivityRequest(BaseModel):
         description="List of running process names",
         min_length=0
     )
+    websites: Optional[List[str]] = Field(
+        default=[],
+        description="List of websites/domains accessed (optional, legacy)"
+    )
+    destinations: Optional[List[Dict[str, Any]]] = Field(
+        default=[],
+        description="List of network destinations with IP, port, domain"
+    )
+    timestamp: Optional[str] = Field(
+        default=None,
+        description="Timestamp from student agent (optional)"
+    )
     
     @field_validator('hostname')
     @classmethod
@@ -53,6 +65,22 @@ class ActivityRequest(BaseModel):
     def validate_processes(cls, v: List[str]) -> List[str]:
         """Validate and clean process list."""
         return [p.strip().lower() for p in v if p.strip()]
+    
+    @field_validator('websites')
+    @classmethod
+    def validate_websites(cls, v: Optional[List[str]]) -> List[str]:
+        """Validate and clean website list."""
+        if v is None:
+            return []
+        return [w.strip().lower() for w in v if w.strip()]
+    
+    @field_validator('destinations')
+    @classmethod
+    def validate_destinations(cls, v: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """Validate destinations list."""
+        if v is None:
+            return []
+        return v
 
 
 class ActivityResponse(BaseModel):

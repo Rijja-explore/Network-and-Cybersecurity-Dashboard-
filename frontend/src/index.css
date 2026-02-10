@@ -9,35 +9,150 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #0b1220;
+  background-color: #0a0e27;
   color: #e5e7eb;
+  background-image: linear-gradient(rgba(0, 212, 255, 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-attachment: fixed;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar with cybersecurity theme */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b1220;
+  background: #0a0e27;
+  border-left: 1px solid #1a2332;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 4px;
+  background: linear-gradient(180deg, #00d4ff, #0099cc);
+  border-radius: 5px;
+  border: 2px solid #0a0e27;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: linear-gradient(180deg, #00ffff, #00d4ff);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+/* Glow effect for critical elements */
+.critical-glow {
+  animation: glow-red 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow-red {
+  from {
+    box-shadow: 0 0 5px rgba(255, 0, 84, 0.5), 0 0 10px rgba(255, 0, 84, 0.3);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(255, 0, 84, 0.8), 0 0 30px rgba(255, 0, 84, 0.5);
+  }
+}
+
+/* Scan line animation */
+.scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.8), transparent);
+  animation: scan 3s linear infinite;
+}
+
+/* Cyber grid background */
+.cyber-grid {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Matrix rain effect (subtle) */
+@keyframes matrix-rain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.5;
+  }
+  90% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+.matrix-rain {
+  animation: matrix-rain 10s linear infinite;
+}
+
+/* Glitch effect for critical alerts */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+.glitch {
+  animation: glitch 0.3s infinite;
+}
+
+/* Neon text effect */
+.neon-text {
+  text-shadow: 
+    0 0 10px rgba(0, 212, 255, 0.8),
+    0 0 20px rgba(0, 212, 255, 0.6),
+    0 0 30px rgba(0, 212, 255, 0.4);
+}
+
+/* Loading spinner */
+.cyber-spinner {
+  border: 3px solid rgba(0, 212, 255, 0.1);
+  border-top: 3px solid #00d4ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

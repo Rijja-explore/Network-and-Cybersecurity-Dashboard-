@@ -1,0 +1,8 @@
+{
+  "allowed_domains": [
+    "https://chatgpt.com"
+  ],
+  "blocked_domains": [
+    "https://chatgpt.com"
+  ]
+}
