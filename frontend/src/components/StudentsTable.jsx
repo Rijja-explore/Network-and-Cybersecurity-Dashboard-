@@ -179,26 +179,46 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
                         {student.destinations && student.destinations.length > 0 && (
                           <>
                             <h4 className="text-sm font-semibold text-soc-text mt-4 mb-2">
-                              📡 Network Connections:
+                              📡 Active Network Connections ({student.destinations.length}):
                             </h4>
-                            <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 max-h-48 overflow-y-auto">
+                            <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 max-h-64 overflow-y-auto">
                               <table className="w-full text-xs">
-                                <thead className="text-gray-400 border-b border-gray-700">
+                                <thead className="text-gray-400 border-b border-gray-700 sticky top-0 bg-gray-800">
                                   <tr>
-                                    <th className="text-left pb-2">Domain/IP</th>
-                                    <th className="text-left pb-2">Port</th>
+                                    <th className="text-left pb-2 pr-2">Domain</th>
+                                    <th className="text-left pb-2 pr-2">IP Address</th>
+                                    <th className="text-left pb-2 pr-2">Port</th>
+                                    <th className="text-right pb-2">Actions</th>
                                   </tr>
                                 </thead>
-                                <tbody className="text-gray-300 font-mono">
+                                <tbody className="text-gray-300">
                                   {student.destinations.map((dest, dIdx) => (
-                                    <tr key={dIdx} className="border-b border-gray-700/50">
-                                      <td className="py-1">{dest.domain || dest.ip}</td>
-                                      <td className="py-1">{dest.port}</td>
+                                    <tr key={dIdx} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                                      <td className="py-2 pr-2 font-mono text-soc-accent">
+                                        {dest.domain || <span className="text-gray-600 italic">N/A</span>}
+                                      </td>
+                                      <td className="py-2 pr-2 font-mono">{dest.ip}</td>
+                                      <td className="py-2 pr-2 font-mono">{dest.port}</td>
+                                      <td className="py-2 text-right">
+                                        <div className="flex justify-end space-x-1">
+                                          <button
+                                            onClick={() => handleBlockWebsite(student.hostname, dest.domain || dest.ip)}
+                                            className="px-2 py-1 bg-soc-alert hover:bg-red-600 text-white rounded text-xs font-medium transition-colors"
+                                            title={`Block ${dest.domain || dest.ip}`}
+                                          >
+                                            Block
+                                          </button>
+                                        </div>
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
                             </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              ⚠️ <strong>Note:</strong> Blocking a domain/IP affects all traffic to that destination. 
+                              Blocking DNS servers (port 53) or gateway IPs may disrupt internet connectivity.
+                            </p>
                           </>
                         )}
                       </div>

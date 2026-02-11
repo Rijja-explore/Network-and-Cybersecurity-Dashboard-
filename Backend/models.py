@@ -38,6 +38,39 @@ class ActivityRequest(BaseModel):
         description="List of running process names",
         min_length=0
     )
+    cpu_percent: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Current CPU usage percentage (0-100)"
+    )
+    memory_percent: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Current memory/RAM usage percentage (0-100)"
+    )
+    disk_percent: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Current disk usage percentage (0-100)"
+    )
+    active_connections: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Number of active network connections"
+    )
+    upload_rate_kbps: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Current upload rate in KB/s"
+    )
+    download_rate_kbps: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Current download rate in KB/s"
+    )
     websites: Optional[List[str]] = Field(
         default=[],
         description="List of websites/domains accessed (optional, legacy)"

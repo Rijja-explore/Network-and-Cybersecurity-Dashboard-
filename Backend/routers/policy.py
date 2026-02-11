@@ -10,6 +10,7 @@ import json
 import os
 
 from config import settings
+from database import db
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -101,17 +102,17 @@ async def get_domain_policies() -> PolicyListResponse:
     "/domains/block",
     status_code=status.HTTP_201_CREATED,
     summary="Add domain to block list",
-    description="Add a domain to the blocked domains list"
+    description="Add a domain to the blocked domains list and send block commands to all active students"
 )
 async def add_blocked_domain(domain_policy: DomainPolicy):
     """
-    Add a domain to the blocked list.
+    Add a domain to the blocked list and propagate to all students.
     
     Args:
         domain_policy: Domain policy with domain name and reason
         
     Returns:
-        dict: Operation result
+        dict: Operation result with global command status
     """
     try:
         policies = load_policies()
@@ -133,11 +134,19 @@ async def add_blocked_domain(domain_policy: DomainPolicy):
         
         logger.info(f"Added {domain} to blocked domains list")
         
+        # Create global command for all active students
+        command_result = db.create_global_command(
+            action="BLOCK_DOMAIN",
+            domain=domain,
+            reason=domain_policy.reason or "Admin policy enforcement"
+        )
+        
         return {
             "success": True,
             "message": f"Domain {domain} added to block list",
             "domain": domain,
-            "total_blocked": len(policies["blocked_domains"])
+            "total_blocked": len(policies["blocked_domains"]),
+            "global_command": command_result
         }
         
     except Exception as e:
@@ -152,17 +161,17 @@ async def add_blocked_domain(domain_policy: DomainPolicy):
     "/domains/allow",
     status_code=status.HTTP_201_CREATED,
     summary="Add domain to allow list",
-    description="Add a domain to the allowed domains list (whitelist)"
+    description="Add a domain to the allowed domains list (whitelist) and send unblock commands to all active students"
 )
 async def add_allowed_domain(domain_policy: DomainPolicy):
     """
-    Add a domain to the allowed list.
+    Add a domain to the allowed list and unblock for all students.
     
     Args:
         domain_policy: Domain policy with domain name
         
     Returns:
-        dict: Operation result
+        dict: Operation result with global command status
     """
     try:
         policies = load_policies()
@@ -180,8 +189,10 @@ async def add_allowed_domain(domain_policy: DomainPolicy):
             }
         
         # Remove from blocked if present
+        was_blocked = False
         if "blocked_domains" in policies and domain in policies["blocked_domains"]:
             policies["blocked_domains"].remove(domain)
+            was_blocked = True
             logger.info(f"Removed {domain} from blocked list")
         
         policies["allowed_domains"].append(domain)
@@ -189,11 +200,22 @@ async def add_allowed_domain(domain_policy: DomainPolicy):
         
         logger.info(f"Added {domain} to allowed domains list")
         
+        # Create global unblock command for all active students
+        command_result = None
+        if was_blocked:
+            command_result = db.create_global_command(
+                action="UNBLOCK_DOMAIN",
+                domain=domain,
+                reason=domain_policy.reason or "Admin policy change - domain allowed"
+            )
+        
         return {
             "success": True,
             "message": f"Domain {domain} added to allow list",
             "domain": domain,
-            "total_allowed": len(policies["allowed_domains"])
+            "total_allowed": len(policies["allowed_domains"]),
+            "was_blocked": was_blocked,
+            "global_command": command_result
         }
         
     except Exception as e:
@@ -207,17 +229,17 @@ async def add_allowed_domain(domain_policy: DomainPolicy):
 @router.delete(
     "/domains/{domain}",
     summary="Remove domain from policies",
-    description="Remove a domain from both allowed and blocked lists"
+    description="Remove a domain from both allowed and blocked lists and send unblock commands to all students"
 )
 async def remove_domain_policy(domain: str):
     """
-    Remove a domain from all policy lists.
+    Remove a domain from all policy lists and unblock for all students.
     
     Args:
         domain: Domain name to remove
         
     Returns:
-        dict: Operation result
+        dict: Operation result with global command status
     """
     try:
         policies = load_policies()
@@ -228,18 +250,31 @@ async def remove_domain_policy(domain: str):
             policies["allowed_domains"].remove(domain)
             removed_from.append("allowed")
         
+        was_blocked = False
         if domain in policies.get("blocked_domains", []):
             policies["blocked_domains"].remove(domain)
             removed_from.append("blocked")
+            was_blocked = True
         
         if removed_from:
             save_policies(policies)
             logger.info(f"Removed {domain} from {', '.join(removed_from)} lists")
             
+            # Create global unblock command if domain was blocked
+            command_result = None
+            if was_blocked:
+                command_result = db.create_global_command(
+                    action="UNBLOCK_DOMAIN",
+                    domain=domain,
+                    reason="Admin removed domain from block list"
+                )
+            
             return {
                 "success": True,
                 "message": f"Domain {domain} removed from {', '.join(removed_from)} lists",
-                "domain": domain
+                "domain": domain,
+                "was_blocked": was_blocked,
+                "global_command": command_result
             }
         else:
             return {

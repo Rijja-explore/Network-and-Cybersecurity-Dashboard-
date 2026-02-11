@@ -53,11 +53,29 @@ def get_active_destinations():
 
 
 def collect_system_data():
-    """Collects system data: hostname, network, processes, websites."""
+    """Collects comprehensive system metrics: hostname, network, CPU, memory, disk, processes, connections."""
     try:
+        # Network stats
         net = psutil.net_io_counters()
-        processes = []
         
+        # System usage metrics
+        cpu_percent = psutil.cpu_percent(interval=0.5)
+        memory_percent = psutil.virtual_memory().percent
+        disk_percent = psutil.disk_usage('/').percent
+        
+        # Network connections count
+        try:
+            active_connections = len([c for c in psutil.net_connections(kind='inet') if c.raddr])
+        except:
+            active_connections = 0
+        
+        # Calculate network rates (KB/s) based on previous measurement
+        # This is a simple approach - in production you'd track deltas
+        upload_rate_kbps = 0.0  # Can be calculated by tracking bytes_sent over time
+        download_rate_kbps = 0.0  # Can be calculated by tracking bytes_recv over time
+        
+        # Process list
+        processes = []
         for proc in psutil.process_iter(['name']):
             try:
                 if proc.info["name"]:
@@ -65,6 +83,7 @@ def collect_system_data():
             except:
                 pass
         
+        # Network destinations
         destinations = get_active_destinations()
         
         return {
@@ -72,6 +91,12 @@ def collect_system_data():
             "timestamp": str(datetime.now()),
             "bytes_sent": net.bytes_sent,
             "bytes_recv": net.bytes_recv,
+            "cpu_percent": cpu_percent,
+            "memory_percent": memory_percent,
+            "disk_percent": disk_percent,
+            "active_connections": active_connections,
+            "upload_rate_kbps": upload_rate_kbps,
+            "download_rate_kbps": download_rate_kbps,
             "processes": list(set(processes[:25])),
             "destinations": destinations
         }
@@ -85,7 +110,11 @@ def send_to_admin(data):
     try:
         response = requests.post(API_URL, json=data, timeout=5)
         if response.status_code == 201:
-            print(f"✅ [SENT] {datetime.now().strftime('%H:%M:%S')} - {len(data.get('destinations', []))} websites tracked")
+            cpu = data.get('cpu_percent', 0)
+            mem = data.get('memory_percent', 0)
+            disk = data.get('disk_percent', 0)
+            conns = data.get('active_connections', 0)
+            print(f"✅ [SENT] {datetime.now().strftime('%H:%M:%S')} - CPU:{cpu:.1f}% RAM:{mem:.1f}% Disk:{disk:.1f}% Conns:{conns}")
         else:
             print(f"⚠️  [WARN] Server responded: {response.status_code}")
     except requests.exceptions.RequestException as e:

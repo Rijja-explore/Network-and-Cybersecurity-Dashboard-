@@ -149,6 +149,30 @@ class Database:
             print("📦 Migrating database: Adding 'destinations' column...")
             cursor.execute("ALTER TABLE activities ADD COLUMN destinations TEXT")
         
+        if 'cpu_percent' not in existing_columns:
+            print("📦 Migrating database: Adding 'cpu_percent' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN cpu_percent REAL")
+        
+        if 'memory_percent' not in existing_columns:
+            print("📦 Migrating database: Adding 'memory_percent' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN memory_percent REAL")
+        
+        if 'disk_percent' not in existing_columns:
+            print("📦 Migrating database: Adding 'disk_percent' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN disk_percent REAL")
+        
+        if 'active_connections' not in existing_columns:
+            print("📦 Migrating database: Adding 'active_connections' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN active_connections INTEGER")
+        
+        if 'upload_rate_kbps' not in existing_columns:
+            print("📦 Migrating database: Adding 'upload_rate_kbps' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN upload_rate_kbps REAL")
+        
+        if 'download_rate_kbps' not in existing_columns:
+            print("📦 Migrating database: Adding 'download_rate_kbps' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN download_rate_kbps REAL")
+        
         if 'agent_timestamp' not in existing_columns:
             print("📦 Migrating database: Adding 'agent_timestamp' column...")
             cursor.execute("ALTER TABLE activities ADD COLUMN agent_timestamp TEXT")
@@ -161,7 +185,13 @@ class Database:
         processes: List[str],
         websites: List[str] = None,
         destinations: List[Dict[str, Any]] = None,
-        agent_timestamp: str = None
+        agent_timestamp: str = None,
+        cpu_percent: float = None,
+        memory_percent: float = None,
+        disk_percent: float = None,
+        active_connections: int = None,
+        upload_rate_kbps: float = None,
+        download_rate_kbps: float = None
     ) -> int:
         """
         Insert a new activity record.
@@ -174,6 +204,12 @@ class Database:
             websites: List of websites/domains accessed (legacy)
             destinations: List of network destinations (IP, port, domain)
             agent_timestamp: Timestamp from student agent
+            cpu_percent: CPU usage percentage (0-100)
+            memory_percent: Memory usage percentage (0-100)
+            disk_percent: Disk usage percentage (0-100)
+            active_connections: Number of active network connections
+            upload_rate_kbps: Upload rate in KB/s
+            download_rate_kbps: Download rate in KB/s
         
         Returns:
             int: ID of the inserted activity record
@@ -187,9 +223,17 @@ class Database:
             destinations_json = json.dumps(destinations or [])
             
             cursor.execute("""
-                INSERT INTO activities (hostname, bytes_sent, bytes_recv, process_list, website_list, destinations, agent_timestamp, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (hostname, bytes_sent, bytes_recv, process_list_json, website_list_json, destinations_json, agent_timestamp, timestamp))
+                INSERT INTO activities (
+                    hostname, bytes_sent, bytes_recv, process_list, website_list, 
+                    destinations, agent_timestamp, cpu_percent, memory_percent, 
+                    disk_percent, active_connections, upload_rate_kbps, download_rate_kbps, timestamp
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                hostname, bytes_sent, bytes_recv, process_list_json, website_list_json, 
+                destinations_json, agent_timestamp, cpu_percent, memory_percent, 
+                disk_percent, active_connections, upload_rate_kbps, download_rate_kbps, timestamp
+            ))
             
             return cursor.lastrowid
     
@@ -391,7 +435,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, hostname, bytes_sent, bytes_recv, process_list, website_list, destinations, agent_timestamp, timestamp
+                SELECT id, hostname, bytes_sent, bytes_recv, process_list, website_list, destinations, agent_timestamp, cpu_percent, timestamp
                 FROM activities
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -401,10 +445,18 @@ class Database:
             activities = []
             for row in rows:
                 activity = dict(row)
-                activity['process_list'] = json.loads(activity['process_list'])
-                activity['website_list'] = json.loads(activity.get('website_list') or '[]')
-                activity['destinations'] = json.loads(activity.get('destinations') or '[]')
+                # Parse JSON fields safely
+                process_list = activity.get('process_list', '[]')
+                activity['process_list'] = json.loads(process_list) if isinstance(process_list, str) else process_list
+                
+                website_list = activity.get('website_list', '[]')
+                activity['website_list'] = json.loads(website_list) if isinstance(website_list, str) else (website_list or [])
+                
+                destinations = activity.get('destinations', '[]')
+                activity['destinations'] = json.loads(destinations) if isinstance(destinations, str) else (destinations or [])
+                
                 activities.append(activity)
+            
             return activities
     
     def add_command(
@@ -526,6 +578,71 @@ class Database:
                 if last_action and last_action[0] == 'BLOCK_DOMAIN':
                     blocked_domains.append(domain)
             return blocked_domains
+    
+    def get_active_students(self, hours: int = 24) -> List[str]:
+        """
+        Get list of students active within the specified hours.
+        
+        Args:
+            hours: Number of hours to look back for activity
+        
+        Returns:
+            List of unique student hostnames
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT hostname
+                FROM activities
+                WHERE datetime(timestamp) >= datetime('now', '-' || ? || ' hours')
+                ORDER BY hostname
+            """, (hours,))
+            
+            rows = cursor.fetchall()
+            return [row[0] for row in rows]
+    
+    def create_global_command(
+        self,
+        action: str,
+        domain: str = None,
+        reason: str = None,
+        hours: int = 24
+    ) -> Dict[str, Any]:
+        """
+        Create a command for ALL active students.
+        
+        Args:
+            action: Command action (e.g., BLOCK_DOMAIN, UNBLOCK_DOMAIN)
+            domain: Domain to target
+            reason: Reason for the command
+            hours: Hours to look back for active students
+        
+        Returns:
+            Dictionary with command creation results
+        """
+        active_students = self.get_active_students(hours)
+        
+        if not active_students:
+            return {
+                "success": False,
+                "message": "No active students found",
+                "commands_created": 0,
+                "students": []
+            }
+        
+        created_count = 0
+        for student in active_students:
+            self.add_command(student, action, domain, reason)
+            created_count += 1
+        
+        return {
+            "success": True,
+            "message": f"Command sent to {created_count} student(s)",
+            "commands_created": created_count,
+            "students": active_students,
+            "action": action,
+            "domain": domain
+        }
 
 # Global database instance
 db = Database()

@@ -107,6 +107,50 @@ const Dashboard = () => {
     bandwidth: (host.total_bandwidth / 1024 / 1024).toFixed(2),
   })) || [];
 
+  // CPU usage data from recent logs (realtime)
+  const cpuData = logs.slice(0, 10).reverse().map((log, index) => ({
+    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit'
+    }),
+    cpu: log.cpu || 0,
+    hostname: log.hostname
+  }));
+
+  // Memory usage data from recent logs
+  const memoryData = logs.slice(0, 10).reverse().map((log, index) => ({
+    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit'
+    }),
+    memory: log.memory || 0,
+    hostname: log.hostname
+  }));
+
+  // Disk usage data from latest logs per student
+  const diskData = logs.reduce((acc, log) => {
+    if (!acc.some(item => item.hostname === log.hostname)) {
+      acc.push({
+        hostname: log.hostname,
+        disk: log.disk || 0
+      });
+    }
+    return acc;
+  }, []).slice(0, 7);
+
+  // Active connections data from recent logs
+  const connectionsData = logs.slice(0, 10).reverse().map((log, index) => ({
+    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit'
+    }),
+    connections: log.connections || 0,
+    hostname: log.hostname
+  }));
+
   const severityData = stats?.alerts_by_severity ? [
     { name: 'Critical', value: stats.alerts_by_severity.critical || 0, color: '#ff0054' },
     { name: 'High', value: stats.alerts_by_severity.high || 0, color: '#ff4757' },
@@ -167,10 +211,67 @@ const Dashboard = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Bandwidth Usage Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Real-time CPU Usage Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-cyber-card border border-cyber-border rounded-xl p-6 shadow-neon-green/20 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-status-success/10 rounded-full filter blur-3xl"></div>
+            <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-status-success" />
+              Real-time CPU Usage
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={cpuData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a2332" />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#6b7280" 
+                  tick={{ fontSize: 10 }} 
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
+                />
+                <YAxis 
+                  stroke="#6b7280" 
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                  label={{ value: 'CPU %', angle: -90, position: 'insideLeft', style: { fill: '#6b7280' } }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f1629',
+                    border: '1px solid #1a2332',
+                    borderRadius: '8px',
+                    color: '#e5e7eb',
+                  }}
+                  labelStyle={{ color: '#10b981' }}
+                  formatter={(value, name, props) => {
+                    return [`${value.toFixed(1)}%`, props.payload.hostname];
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="cpu" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  dot={{ fill: '#10b981', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+              <span>📊 Last 10 student updates</span>
+              <span>Updates every {countdown}s</span>
+            </div>
+          </motion.div>
+
+          {/* Bandwidth Usage Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: 0 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
             className="bg-cyber-card border border-cyber-border rounded-xl p-6 shadow-neon-blue/20 relative overflow-hidden"
@@ -180,10 +281,10 @@ const Dashboard = () => {
               <TrendingUp className="w-5 h-5 text-neon-blue" />
               Top Bandwidth Consumers
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={bandwidthData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1a2332" />
-                <XAxis dataKey="name" stroke="#6b7280" tick={{ fontSize: 12 }} />
+                <XAxis dataKey="name" stroke="#6b7280" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={70} />
                 <YAxis stroke="#6b7280" />
                 <Tooltip
                   contentStyle={{
@@ -217,14 +318,14 @@ const Dashboard = () => {
               <AlertTriangle className="w-5 h-5 text-status-warning" />
               Alert Distribution
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={severityData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
+                  innerRadius={50}
+                  outerRadius={90}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -242,16 +343,186 @@ const Dashboard = () => {
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
+            <div className="flex flex-wrap justify-center gap-3 mt-2">
               {severityData.map((item) => (
                 <div key={item.name} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                  <span className="text-sm text-gray-400">{item.name}: {item.value}</span>
+                  <span className="text-xs text-gray-400">{item.name}: {item.value}</span>
                 </div>
               ))}
             </div>
           </motion.div>
         </div>
+
+        {/* Second Row: Memory, Disk, Connections Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Memory Usage Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.55 }}
+            className="bg-cyber-card border border-cyber-border rounded-xl p-6 shadow-neon-purple/20 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/10 rounded-full filter blur-3xl"></div>
+            <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-neon-purple" />
+              Real-time Memory Usage
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={memoryData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a2332" />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#6b7280" 
+                  tick={{ fontSize: 10 }} 
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
+                />
+                <YAxis 
+                  stroke="#6b7280" 
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                  label={{ value: 'Memory %', angle: -90, position: 'insideLeft', style: { fill: '#6b7280' } }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f1629',
+                    border: '1px solid #1a2332',
+                    borderRadius: '8px',
+                    color: '#e5e7eb',
+                  }}
+                  labelStyle={{ color: '#a855f7' }}
+                  formatter={(value, name, props) => {
+                    return [`${value.toFixed(1)}%`, props.payload.hostname];
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="memory" 
+                  stroke="#a855f7" 
+                  strokeWidth={3}
+                  dot={{ fill: '#a855f7', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+              <span>💾 Last 10 student updates</span>
+              <span>Updates every {countdown}s</span>
+            </div>
+          </motion.div>
+
+          {/* Disk Usage Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: 0 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-cyber-card border border-cyber-border rounded-xl p-6 shadow-neon-orange/20 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-status-warning/10 rounded-full filter blur-3xl"></div>
+            <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2">
+              <Server className="w-5 h-5 text-status-warning" />
+              Disk Usage by Student
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={diskData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a2332" />
+                <XAxis 
+                  dataKey="hostname" 
+                  stroke="#6b7280" 
+                  tick={{ fontSize: 10 }} 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={70} 
+                />
+                <YAxis 
+                  stroke="#6b7280" 
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                  label={{ value: 'Disk %', angle: -90, position: 'insideLeft', style: { fill: '#6b7280' } }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f1629',
+                    border: '1px solid #1a2332',
+                    borderRadius: '8px',
+                    color: '#e5e7eb',
+                  }}
+                  labelStyle={{ color: '#ffa502' }}
+                  formatter={(value) => `${value.toFixed(1)}%`}
+                />
+                <Bar dataKey="disk" fill="url(#diskGradient)" radius={[8, 8, 0, 0]} />
+                <defs>
+                  <linearGradient id="diskGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ffa502" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#ff6348" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+              <span>📂 Current disk usage per student</span>
+            </div>
+          </motion.div>
+
+          {/* Active Connections Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.65 }}
+            className="bg-cyber-card border border-cyber-border rounded-xl p-6 shadow-neon-cyan/20 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-32 h-32 bg-neon-cyan/10 rounded-full filter blur-3xl"></div>
+            <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2">
+              <Wifi className="w-5 h-5 text-neon-cyan" />
+              Active Network Connections
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={connectionsData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a2332" />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#6b7280" 
+                  tick={{ fontSize: 10 }} 
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
+                />
+                <YAxis 
+                  stroke="#6b7280"
+                  label={{ value: 'Connections', angle: -90, position: 'insideLeft', style: { fill: '#6b7280' } }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f1629',
+                    border: '1px solid #1a2332',
+                    borderRadius: '8px',
+                    color: '#e5e7eb',
+                  }}
+                  labelStyle={{ color: '#00d4ff' }}
+                  formatter={(value, name, props) => {
+                    return [`${value} connections`, props.payload.hostname];
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="connections" 
+                  stroke="#00d4ff" 
+                  strokeWidth={3}
+                  dot={{ fill: '#00d4ff', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+              <span>🔗 Last 10 student updates</span>
+              <span>Updates every {countdown}s</span>
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 mb-8">
 
         {/* Recent Alerts */}
         <motion.div
@@ -456,6 +727,8 @@ const Dashboard = () => {
             </div>
           )}
         </motion.div>
+      </div>
+
       </div>
 
       {/* Destinations Modal */}

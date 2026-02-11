@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
+import json
 from datetime import datetime
 
 from config import settings
@@ -42,7 +43,14 @@ async def lifespan(app: FastAPI):
     # Database is already initialized in database.py, but we can log confirmation
     logger.info("Database initialized successfully")
     logger.info(f"Blocked keywords: {', '.join(settings.BLOCKED_KEYWORDS)}")
-    logger.info(f"Bandwidth threshold: {settings.BANDWIDTH_THRESHOLD_MB} MB")
+    logger.info(f"Policy Thresholds:")
+    logger.info(f"  - Bandwidth: {settings.BANDWIDTH_THRESHOLD_MB} MB")
+    logger.info(f"  - CPU Usage: {settings.CPU_THRESHOLD_PERCENT}%")
+    logger.info(f"  - Memory Usage: {settings.MEMORY_THRESHOLD_PERCENT}%")
+    logger.info(f"  - Disk Usage: {settings.DISK_THRESHOLD_PERCENT}%")
+    logger.info(f"  - Max Connections: {settings.CONNECTIONS_THRESHOLD}")
+    logger.info(f"  - Upload Rate: {settings.UPLOAD_RATE_THRESHOLD_MBPS} MB/s")
+    logger.info(f"  - Download Rate: {settings.DOWNLOAD_RATE_THRESHOLD_MBPS} MB/s")
     
     yield
     
@@ -198,46 +206,53 @@ async def get_student_logs():
             total_network = activity['bytes_sent'] + activity['bytes_recv']
             
             # Get top processes (limit to 5 for display)
-            top_processes = activity['process_list'][:5] if activity['process_list'] else []
+            process_list = json.loads(activity['process_list']) if activity.get('process_list') else []
+            top_apps = process_list[:5]
             
-            # Extract websites from destinations (domain or IP)
-            destinations = activity.get('destinations', []) or []
-            websites_from_destinations = []
-            for dest in destinations:
-                if dest.get('domain'):
-                    websites_from_destinations.append(dest['domain'])
-                elif dest.get('ip'):
-                    websites_from_destinations.append(f"{dest['ip']}:{dest.get('port', '')}")
+            # Get websites/destinations
+            website_list = json.loads(activity['website_list']) if activity.get('website_list') else []
+            destinations_data = json.loads(activity['destinations']) if activity.get('destinations') else []
             
-            # Combine with legacy website list
-            all_websites = list(set(websites_from_destinations + (activity.get('website_list', []) or [])))
+            # Extract unique domains and IPs from destinations
+            all_websites = set(website_list)
+            all_destinations = []
+            for dest in destinations_data:
+                domain = dest.get('domain')
+                ip = dest.get('ip')
+                port = dest.get('port')
+                if domain:
+                    all_websites.add(domain)
+                    all_destinations.append(f"{domain} ({ip}:{port})" if ip and port else domain)
+                elif ip:
+                    all_destinations.append(f"{ip}:{port}" if port else ip)
             
-            # Format timestamp (prefer agent timestamp if available)
-            timestamp_str = activity.get('agent_timestamp') or activity['timestamp']
-            try:
-                timestamp_obj = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                formatted_time = timestamp_obj.strftime("%Y-%m-%d %H:%M")
-            except:
-                formatted_time = str(timestamp_str)[:16]
+            # Get CPU percentage
+            cpu_percent = activity.get('cpu_percent', 0) or 0
+            
+            # Get memory, disk, connections
+            memory_percent = activity.get('memory_percent', 0) or 0
+            disk_percent = activity.get('disk_percent', 0) or 0
+            active_connections = activity.get('active_connections', 0) or 0
             
             formatted_logs.append({
                 "student_id": activity['hostname'],
                 "hostname": activity['hostname'],
-                "cpu": 60,  # Placeholder - would come from agent data if available
+                "cpu": round(cpu_percent, 1),
+                "memory": round(memory_percent, 1),
+                "disk": round(disk_percent, 1),
+                "connections": active_connections,
                 "network": total_network,
-                "network_mb": round(total_network / 1024 / 1024, 2),  # Convert to MB
+                "network_mb": round(total_network / (1024 * 1024), 2),
+                "apps": top_apps,
+                "processes": process_list,
+                "websites": list(all_websites)[:5],  # Show first 5
+                "all_websites": list(all_websites),  # All for modal
+                "destinations": destinations_data[:5],  # Show first 5
+                "all_destinations": all_destinations,  # All for modal  
                 "bytes_sent": activity['bytes_sent'],
                 "bytes_recv": activity['bytes_recv'],
-                "apps": top_processes,
-                "active_apps": top_processes,
-                "processes": activity['process_list'],
-                "websites": all_websites[:10],  # Top 10 websites
-                "all_websites": all_websites,  # All websites for detail view
-                "destinations": destinations[:10],  # Top 10 destinations with IP/port/domain
-                "all_destinations": destinations,  # All destinations
-                "timestamp": formatted_time,
+                "timestamp": activity['timestamp'],
                 "raw_timestamp": activity['timestamp'],
-                "agent_timestamp": activity.get('agent_timestamp'),
                 "activity_id": activity['id']
             })
         

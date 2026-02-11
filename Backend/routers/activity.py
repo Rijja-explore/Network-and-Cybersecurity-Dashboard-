@@ -93,7 +93,13 @@ async def submit_activity(activity: ActivityRequest) -> ActivityResponse:
             processes=activity.processes,
             websites=all_websites,
             destinations=activity.destinations,
-            agent_timestamp=activity.timestamp
+            agent_timestamp=activity.timestamp,
+            cpu_percent=activity.cpu_percent,
+            memory_percent=activity.memory_percent,
+            disk_percent=activity.disk_percent,
+            active_connections=activity.active_connections,
+            upload_rate_kbps=activity.upload_rate_kbps,
+            download_rate_kbps=activity.download_rate_kbps
         )
         
         # Check for policy violations
@@ -101,7 +107,14 @@ async def submit_activity(activity: ActivityRequest) -> ActivityResponse:
             processes=activity.processes,
             bytes_sent=activity.bytes_sent,
             bytes_recv=activity.bytes_recv,
-            hostname=activity.hostname
+            hostname=activity.hostname,
+            destinations=activity.destinations,
+            cpu_percent=activity.cpu_percent,
+            memory_percent=activity.memory_percent,
+            disk_percent=activity.disk_percent,
+            active_connections=activity.active_connections,
+            upload_rate_kbps=activity.upload_rate_kbps,
+            download_rate_kbps=activity.download_rate_kbps
         )
         
         alert_id = None

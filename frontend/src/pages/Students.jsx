@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import StudentsTable from '../components/StudentsTable';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getStudents, blockStudent, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
+import { getStudents, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
 
 const Students = () => {
   const [students, setStudents] = useState([]);
@@ -48,15 +48,7 @@ const Students = () => {
     fetchData();
   };
 
-  const handleBlockStudent = async (ip) => {
-    try {
-      await blockStudent(ip);
-      alert(`Successfully blocked endpoint: ${ip}`);
-      fetchData(); // Refresh the list
-    } catch (error) {
-      alert(`Failed to block endpoint: ${error}`);
-    }
-  };
+
 
   const handleBlockWebsite = async (studentId, domain) => {
     try {
@@ -130,7 +122,6 @@ const Students = () => {
         {/* Students Table */}
         <StudentsTable 
           students={students} 
-          onBlock={handleBlockStudent}
           onBlockWebsite={handleBlockWebsite}
           onUnblockWebsite={handleUnblockWebsite}
         />

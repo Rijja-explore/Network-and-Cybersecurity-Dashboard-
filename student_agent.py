@@ -102,11 +102,13 @@ def collect_system_data():
     Collects comprehensive system data:
     - Hostname
     - Network usage (bytes sent/received)
+    - CPU usage percentage
     - Running processes
     - Active network destinations (websites)
     """
     try:
         net = psutil.net_io_counters()
+        cpu_percent = psutil.cpu_percent(interval=0.5)
         processes = []
 
         for proc in psutil.process_iter(['name']):
@@ -123,6 +125,7 @@ def collect_system_data():
             "timestamp": str(datetime.now()),
             "bytes_sent": net.bytes_sent,
             "bytes_recv": net.bytes_recv,
+            "cpu_percent": cpu_percent,
             "processes": list(set(processes[:25])),  # Unique processes, limit to 25
             "destinations": destinations
         }
