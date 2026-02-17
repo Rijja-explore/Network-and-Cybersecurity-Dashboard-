@@ -435,7 +435,9 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, hostname, bytes_sent, bytes_recv, process_list, website_list, destinations, agent_timestamp, cpu_percent, timestamp
+                SELECT id, hostname, bytes_sent, bytes_recv, process_list, website_list, destinations, 
+                       agent_timestamp, cpu_percent, memory_percent, disk_percent, active_connections,
+                       upload_rate_kbps, download_rate_kbps, timestamp
                 FROM activities
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -445,15 +447,39 @@ class Database:
             activities = []
             for row in rows:
                 activity = dict(row)
-                # Parse JSON fields safely
-                process_list = activity.get('process_list', '[]')
-                activity['process_list'] = json.loads(process_list) if isinstance(process_list, str) else process_list
+                # Parse JSON fields safely with better error handling
+                try:
+                    process_list = activity.get('process_list', '[]')
+                    if isinstance(process_list, str):
+                        activity['process_list'] = json.loads(process_list)
+                    elif isinstance(process_list, list):
+                        activity['process_list'] = process_list
+                    else:
+                        activity['process_list'] = []
+                except (json.JSONDecodeError, TypeError):
+                    activity['process_list'] = []
                 
-                website_list = activity.get('website_list', '[]')
-                activity['website_list'] = json.loads(website_list) if isinstance(website_list, str) else (website_list or [])
+                try:
+                    website_list = activity.get('website_list', '[]')
+                    if isinstance(website_list, str):
+                        activity['website_list'] = json.loads(website_list)
+                    elif isinstance(website_list, list):
+                        activity['website_list'] = website_list
+                    else:
+                        activity['website_list'] = []
+                except (json.JSONDecodeError, TypeError):
+                    activity['website_list'] = []
                 
-                destinations = activity.get('destinations', '[]')
-                activity['destinations'] = json.loads(destinations) if isinstance(destinations, str) else (destinations or [])
+                try:
+                    destinations = activity.get('destinations', '[]')
+                    if isinstance(destinations, str):
+                        activity['destinations'] = json.loads(destinations)
+                    elif isinstance(destinations, list):
+                        activity['destinations'] = destinations
+                    else:
+                        activity['destinations'] = []
+                except (json.JSONDecodeError, TypeError):
+                    activity['destinations'] = []
                 
                 activities.append(activity)
             

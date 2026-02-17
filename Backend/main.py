@@ -205,13 +205,35 @@ async def get_student_logs():
             # Calculate total network usage
             total_network = activity['bytes_sent'] + activity['bytes_recv']
             
-            # Get top processes (limit to 5 for display)
-            process_list = json.loads(activity['process_list']) if activity.get('process_list') else []
+            # Get top processes (limit to 5 for display) - Handle both string and list types
+            process_list = activity.get('process_list', [])
+            if isinstance(process_list, str):
+                try:
+                    process_list = json.loads(process_list)
+                except (json.JSONDecodeError, TypeError):
+                    process_list = []
+            elif not isinstance(process_list, list):
+                process_list = []
             top_apps = process_list[:5]
             
-            # Get websites/destinations
-            website_list = json.loads(activity['website_list']) if activity.get('website_list') else []
-            destinations_data = json.loads(activity['destinations']) if activity.get('destinations') else []
+            # Get websites/destinations - Handle both string and list types
+            website_list = activity.get('website_list', [])
+            if isinstance(website_list, str):
+                try:
+                    website_list = json.loads(website_list)
+                except (json.JSONDecodeError, TypeError):
+                    website_list = []
+            elif not isinstance(website_list, list):
+                website_list = []
+                
+            destinations_data = activity.get('destinations', [])
+            if isinstance(destinations_data, str):
+                try:
+                    destinations_data = json.loads(destinations_data)
+                except (json.JSONDecodeError, TypeError):
+                    destinations_data = []
+            elif not isinstance(destinations_data, list):
+                destinations_data = []
             
             # Extract unique domains and IPs from destinations
             all_websites = set(website_list)
@@ -260,37 +282,25 @@ async def get_student_logs():
         
     except Exception as e:
         logger.error(f"Error fetching admin logs: {str(e)}")
-        # Return fallback data for testing
+        # Include the actual error in response for debugging
         return [
             {
-                "student_id": "STU001",
-                "hostname": "STUDENT-PC-001", 
-                "cpu": 60,
-                "network": 2400000,
-                "network_mb": 2.4,
-                "bytes_sent": 1200000,
-                "bytes_recv": 1200000,
-                "apps": ["chrome.exe", "discord.exe", "notepad.exe"],
-                "active_apps": ["chrome.exe", "discord.exe"],
-                "processes": ["chrome.exe", "discord.exe", "notepad.exe", "explorer.exe"],
-                "timestamp": "2026-02-10 14:30",
+                "error": f"Database error: {str(e)}",
+                "hostname": "ERROR", 
+                "cpu": 0,
+                "memory": 0, 
+                "disk": 0,
+                "network": 0,
+                "network_mb": 0,
+                "bytes_sent": 0,
+                "bytes_recv": 0,
+                "apps": [],
+                "processes": [],
+                "websites": [],
+                "destinations": [],
+                "timestamp": datetime.utcnow().isoformat(),
                 "raw_timestamp": datetime.utcnow().isoformat(),
-                "activity_id": 1
-            },
-            {
-                "student_id": "STU002", 
-                "hostname": "STUDENT-PC-002",
-                "cpu": 45,
-                "network": 890000,
-                "network_mb": 0.89,
-                "bytes_sent": 445000,
-                "bytes_recv": 445000,
-                "apps": ["firefox.exe", "steam.exe"],
-                "active_apps": ["firefox.exe"],
-                "processes": ["firefox.exe", "steam.exe", "explorer.exe"],
-                "timestamp": "2026-02-10 14:28",
-                "raw_timestamp": datetime.utcnow().isoformat(), 
-                "activity_id": 2
+                "activity_id": 0
             }
         ]
 

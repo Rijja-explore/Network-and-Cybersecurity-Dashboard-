@@ -17,7 +17,7 @@ export const generateReport = async () => {
 };
 
 // Base API URL - Update this to your backend URL
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8001';
 
 // Create axios instance with default config
 const api = axios.create({

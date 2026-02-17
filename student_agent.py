@@ -1,26 +1,4 @@
-"""
-🧑‍🎓 STUDENT AGENT - Network Monitoring & Remote Control
-================================================
 
-▶️ EASY SETUP FOR YOUR FRIEND:
-   1. Install Python packages: pip install psutil requests
-   2. Change BACKEND_SERVER_IP below to your backend's IP address
-   3. Run as Administrator: Right-click PowerShell → Run as Administrator
-   4. Execute: python student_agent.py
-
-📋 What this agent does:
-   ✅ Monitors websites you visit
-   ✅ Tracks network usage
-   ✅ Sends data to admin backend
-   ✅ Receives block/unblock commands from admin
-   ✅ Enforces blocks locally using Windows Firewall
-
-⚠️ REQUIREMENTS:
-   - Windows OS (uses Windows Firewall)
-   - Administrator privileges
-   - Python 3.7+
-   - Packages: psutil, requests
-"""
 import psutil
 import socket
 import requests
@@ -32,8 +10,8 @@ from datetime import datetime
 # ============================================================
 # 🔧 CONFIGURATION - CHANGE THIS FOR YOUR FRIEND
 # ============================================================
-BACKEND_SERVER_IP = "10.70.248.252"   # ⬅️ CHANGE TO YOUR BACKEND IP
-BACKEND_SERVER_PORT = 8000             # Backend port (usually 8000)
+BACKEND_SERVER_IP = "10.154.216.252"   # ⬅️ CHANGE TO YOUR BACKEND IP
+BACKEND_SERVER_PORT = 8001             # Backend port (usually 8000)
 
 SEND_INTERVAL = 5   # Send data every 5 seconds
 POLL_INTERVAL = 3   # Check for commands every 3 seconds
