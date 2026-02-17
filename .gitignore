@@ -1,0 +1,70 @@
+.# Top-level gitignore for the project
+# See also Backend/.gitignore and frontend/.gitignore for folder-specific rules
+
+# Node
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
+
+# Build outputs
+/build/
+/dist/
+frontend/dist/
+frontend/build/
+.vite/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Virtual environment directories
+venv/
+ENV/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+monitoring.db
+
+# Logs
+*.log
+logs/
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+.tox/
+
+# Misc
+/.pnp
+.pnp.js

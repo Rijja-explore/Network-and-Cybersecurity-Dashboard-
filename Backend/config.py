@@ -46,6 +46,23 @@ class Settings:
         "http://localhost:3000,http://localhost:5173"
     ).split(",")
 
+    # Ensure common dev origins are included (localhost vs 127.0.0.1)
+    _expanded = set()
+    for origin in ALLOWED_ORIGINS:
+        origin = origin.strip()
+        if not origin:
+            continue
+        _expanded.add(origin)
+        # add 127.0.0.1 equivalent when localhost present
+        if 'localhost' in origin:
+            _expanded.add(origin.replace('localhost', '127.0.0.1'))
+
+    # If in debug mode, allow wildcard to simplify development
+    if os.getenv('DEBUG', 'True').lower() == 'true':
+        _expanded.add('*')
+
+    ALLOWED_ORIGINS = list(_expanded)
+
 
 # Global settings instance
 settings = Settings()

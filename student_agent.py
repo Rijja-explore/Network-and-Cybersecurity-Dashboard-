@@ -109,8 +109,20 @@ def collect_system_data():
     try:
         net = psutil.net_io_counters()
         cpu_percent = psutil.cpu_percent(interval=0.5)
-        processes = []
+        memory_percent = psutil.virtual_memory().percent
+        disk_percent = psutil.disk_usage('/').percent
 
+        # Active connections count
+        try:
+            active_connections = len([c for c in psutil.net_connections(kind='inet') if c.raddr])
+        except:
+            active_connections = 0
+
+        # Rates placeholders (could compute deltas over time)
+        upload_rate_kbps = 0.0
+        download_rate_kbps = 0.0
+
+        processes = []
         for proc in psutil.process_iter(['name']):
             try:
                 if proc.info["name"]:
@@ -126,6 +138,11 @@ def collect_system_data():
             "bytes_sent": net.bytes_sent,
             "bytes_recv": net.bytes_recv,
             "cpu_percent": cpu_percent,
+            "memory_percent": memory_percent,
+            "disk_percent": disk_percent,
+            "active_connections": active_connections,
+            "upload_rate_kbps": upload_rate_kbps,
+            "download_rate_kbps": download_rate_kbps,
             "processes": list(set(processes[:25])),  # Unique processes, limit to 25
             "destinations": destinations
         }
