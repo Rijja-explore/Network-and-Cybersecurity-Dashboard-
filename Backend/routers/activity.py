@@ -132,6 +132,40 @@ async def submit_activity(activity: ActivityRequest) -> ActivityResponse:
                 severity=violation_result.severity,
                 activity_id=activity_id
             )
+            
+            # Auto-block known malicious domains based on detected processes
+            if violation_result.violated_processes:
+                # Map blocked keywords to known malicious domains
+                block_domains = {
+                    'torrent': ['thepiratebay.org', 'kickasstorrents.to', '1337x.to', 'torrentgalaxy.to'],
+                    'proxy': ['proxysite.com', 'hidester.com', 'croxyproxy.com', 'kproxy.com'],
+                    'nmap': ['insecure.org', 'nmap.org'],
+                    'wireshark': ['wireshark.org'],
+                    'metasploit': ['metasploit.com', 'rapid7.com']
+                }
+                
+                domains_to_block = set()
+                for process in violation_result.violated_processes:
+                    process_lower = process.lower()
+                    for keyword, domains in block_domains.items():
+                        if keyword in process_lower:
+                            domains_to_block.update(domains)
+                            break
+                
+                # Create block commands for detected domains
+                for domain in domains_to_block:
+                    try:
+                        command_id = db.add_command(
+                            student_id=activity.hostname,
+                            action="BLOCK_DOMAIN", 
+                            domain=domain,
+                            reason=f"Auto-block: {', '.join(violation_result.violated_processes)} process detected"
+                        )
+                        logger.info(f"Auto-blocking {domain} for {activity.hostname} due to policy violation")
+                    except Exception as e:
+                        logger.error(f"Failed to create auto-block command for {domain}: {e}")
+        
+        
         
         # Build response
         return ActivityResponse(

@@ -380,9 +380,19 @@ def main():
             payload = collect_system_data()
             if payload:
                 send_to_admin(payload)
+                
+                # Immediately check for commands after sending data
+                # This makes blocking/unblocking more responsive
+                commands = check_for_commands()
+                if commands:
+                    print(f"\n📥 Received {len(commands)} command(s) from admin:")
+                    for cmd in commands:
+                        execute_command(cmd)
+                    print()
+                
             last_send_time = current_time
         
-        # Poll for commands every POLL_INTERVAL seconds
+        # Also poll for commands every POLL_INTERVAL seconds (backup)
         if current_time - last_poll_time >= POLL_INTERVAL:
             commands = check_for_commands()
             if commands:

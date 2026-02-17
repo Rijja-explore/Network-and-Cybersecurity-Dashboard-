@@ -26,14 +26,14 @@ class Settings:
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
-    # Policy Configuration - Thresholds
-    BANDWIDTH_THRESHOLD_MB: int = int(os.getenv("BANDWIDTH_THRESHOLD_MB", "500"))
-    CPU_THRESHOLD_PERCENT: int = int(os.getenv("CPU_THRESHOLD_PERCENT", "80"))
-    MEMORY_THRESHOLD_PERCENT: int = int(os.getenv("MEMORY_THRESHOLD_PERCENT", "85"))
-    DISK_THRESHOLD_PERCENT: int = int(os.getenv("DISK_THRESHOLD_PERCENT", "90"))
-    CONNECTIONS_THRESHOLD: int = int(os.getenv("CONNECTIONS_THRESHOLD", "100"))
-    UPLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("UPLOAD_RATE_THRESHOLD_MBPS", "50"))
-    DOWNLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("DOWNLOAD_RATE_THRESHOLD_MBPS", "100"))
+    # Policy Configuration - Thresholds (College Prototype - Reduced Values)
+    BANDWIDTH_THRESHOLD_MB: int = int(os.getenv("BANDWIDTH_THRESHOLD_MB", "100"))  # Reduced from 500 to 100
+    CPU_THRESHOLD_PERCENT: int = int(os.getenv("CPU_THRESHOLD_PERCENT", "60"))     # Reduced from 80 to 60
+    MEMORY_THRESHOLD_PERCENT: int = int(os.getenv("MEMORY_THRESHOLD_PERCENT", "70"))  # Reduced from 85 to 70
+    DISK_THRESHOLD_PERCENT: int = int(os.getenv("DISK_THRESHOLD_PERCENT", "80"))    # Reduced from 90 to 80
+    CONNECTIONS_THRESHOLD: int = int(os.getenv("CONNECTIONS_THRESHOLD", "50"))     # Reduced from 100 to 50
+    UPLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("UPLOAD_RATE_THRESHOLD_MBPS", "25"))   # Reduced from 50 to 25
+    DOWNLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("DOWNLOAD_RATE_THRESHOLD_MBPS", "50"))  # Reduced from 100 to 50
     
     BLOCKED_KEYWORDS: List[str] = os.getenv(
         "BLOCKED_KEYWORDS", 

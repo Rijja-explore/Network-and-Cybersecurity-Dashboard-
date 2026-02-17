@@ -30,13 +30,25 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
 
   const handleBlockWebsite = async (studentId, domain) => {
     if (onBlockWebsite) {
-      await onBlockWebsite(studentId, domain);
+      try {
+        console.log(`🚫 Blocking ${domain} for student ${studentId}`);
+        await onBlockWebsite(studentId, domain);
+        console.log(`✅ Block request completed for ${domain}`);
+      } catch (error) {
+        console.error('Block website error:', error);
+      }
     }
   };
 
   const handleUnblockWebsite = async (studentId, domain) => {
     if (onUnblockWebsite) {
-      await onUnblockWebsite(studentId, domain);
+      try {
+        console.log(`✅ Unblocking ${domain} for student ${studentId}`);
+        await onUnblockWebsite(studentId, domain);
+        console.log(`✅ Unblock request completed for ${domain}`);
+      } catch (error) {
+        console.error('Unblock website error:', error);
+      }
     }
   };
 
@@ -136,6 +148,13 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
                               ))}
                             </div>
                           </>
+                        )}
+
+                        {/* Show message if no blocked domains */}
+                        {(!student.blocked_domains || student.blocked_domains.length === 0) && (
+                          <div className="mb-4 p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
+                            <p className="text-sm text-gray-400">✅ No domains currently blocked for this student</p>
+                          </div>
                         )}
 
                         {/* Websites Accessed Section */}

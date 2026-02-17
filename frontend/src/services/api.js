@@ -104,6 +104,32 @@ export const resolveAlert = async (alertId) => {
 };
 
 /**
+ * Generate test alerts for college prototype
+ * @returns {Promise} - API response
+ */
+export const generateTestAlerts = async () => {
+  try {
+    const response = await api.post('/alerts/generate-test-alerts');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.detail || 'Failed to generate test alerts';
+  }
+};
+
+/**
+ * Test blocked processes functionality
+ * @returns {Promise} - API response
+ */
+export const testBlockedProcesses = async () => {
+  try {
+    const response = await api.post('/admin/test-blocked-processes');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.detail || 'Failed to test blocked processes';
+  }
+};
+
+/**
  * Get weekly statistics
  * @returns {Promise} - Weekly stats object
  */
@@ -363,13 +389,16 @@ export const getDomainPolicies = async () => {
  */
 export const addBlockedDomain = async (domain, reason = 'Policy violation') => {
   try {
+    console.log(`🚫 Adding domain to block list: ${domain} (${reason})`);
     const response = await api.post('/policy/domains/block', {
       domain,
       policy: 'blocked',
       reason
     });
+    console.log(`✅ Domain blocked successfully:`, response.data);
     return response.data;
   } catch (error) {
+    console.error(`❌ Failed to block domain ${domain}:`, error.response?.data || error);
     throw error.response?.data?.detail || 'Failed to add blocked domain';
   }
 };
@@ -399,9 +428,12 @@ export const addAllowedDomain = async (domain) => {
  */
 export const removeDomainPolicy = async (domain) => {
   try {
+    console.log(`🗑️ Removing domain policy for: ${domain}`);
     const response = await api.delete(`/policy/domains/${domain}`);
+    console.log(`✅ Domain policy removed successfully:`, response.data);
     return response.data;
   } catch (error) {
+    console.error(`❌ Failed to remove domain policy for ${domain}:`, error.response?.data || error);
     throw error.response?.data?.detail || 'Failed to remove domain policy';
   }
 };

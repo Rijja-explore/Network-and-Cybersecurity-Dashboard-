@@ -435,6 +435,66 @@ app.include_router(policy_router)
 app.include_router(commands_router)
 
 
+@app.post(
+    "/admin/test-blocked-processes",
+    tags=["Admin"],
+    summary="Test student with blocked processes",
+    description="Simulate a student with blocked processes to test auto-blocking functionality"
+)
+async def test_blocked_processes():
+    """
+    Create a test activity submission with blocked processes to test auto-blocking.
+    
+    This will trigger the policy violation detection and auto-blocking functionality.
+    
+    Returns:
+        Success confirmation
+    """
+    try:
+        from routers.activity import submit_activity
+        from models import ActivityRequest
+        
+        # Create test activity with blocked processes
+        test_activity = ActivityRequest(
+            hostname="TEST-STUDENT-PC",
+            timestamp=datetime.utcnow().isoformat(),
+            bytes_sent=1024000,
+            bytes_recv=2048000,
+            cpu_percent=45.2,
+            memory_percent=65.3,
+            disk_percent=55.1,
+            active_connections=25,
+            upload_rate_kbps=150.5,
+            download_rate_kbps=800.2,
+            processes=["chrome.exe", "torrent.exe", "proxy-tool.exe", "nmap.exe", "notepad.exe"],  # Contains blocked keywords
+            websites=["google.com", "thepiratebay.org", "facebook.com"],
+            destinations=[
+                {"ip": "142.250.191.14", "port": 443, "domain": "google.com"},
+                {"ip": "185.8.156.2", "port": 443, "domain": "thepiratebay.org"},
+                {"ip": "157.240.22.35", "port": 443, "domain": "facebook.com"}
+            ]
+        )
+        
+        # Submit the test activity
+        result = await submit_activity(test_activity)
+        
+        return {
+            "success": True,
+            "message": "Test activity with blocked processes submitted",
+            "activity_id": result.activity_id,
+            "violation_detected": result.violation_detected,
+            "alert_id": result.alert_id,
+            "test_processes": test_activity.processes
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creating test activity: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create test activity: {str(e)}"
+        )
+
+
 # For debugging: Log all registered routes
 async def log_routes_on_startup():
     """Log all registered routes for debugging purposes."""
@@ -457,7 +517,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,
         reload=settings.DEBUG,
         log_level="info"
     )

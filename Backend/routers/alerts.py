@@ -5,6 +5,7 @@ Provides endpoints for viewing and resolving security alerts.
 from fastapi import APIRouter, HTTPException, status, Path
 from typing import Dict, Any
 import logging
+from datetime import datetime
 
 from models import AlertResponse, AlertListResponse, AlertResolveResponse
 from database import db
@@ -204,3 +205,71 @@ async def test_alerts_router() -> Dict[str, Any]:
         "router": "alerts",
         "message": "Alerts router is working"
     }
+
+
+@router.post(
+    "/generate-test-alerts",
+    summary="Generate test alerts for college prototype",
+    description="Generate sample alerts for testing purposes in college environment"
+)
+async def generate_test_alerts() -> Dict[str, Any]:
+    """
+    Generate test alerts for college prototype demonstration.
+    
+    Returns:
+        dict: Confirmation of test alerts created
+    """
+    try:
+        # Generate various types of test alerts for demonstration
+        test_alerts = [
+            {
+                "hostname": "STUDENT-PC-001",
+                "reason": "High CPU usage detected: 85.6% (threshold: 60%)",
+                "severity": "medium"
+            },
+            {
+                "hostname": "STUDENT-PC-002", 
+                "reason": "Blocked application detected: torrent.exe",
+                "severity": "high"
+            },
+            {
+                "hostname": "STUDENT-PC-003",
+                "reason": "Excessive network connections: 65 active connections (limit: 50)",
+                "severity": "medium"
+            },
+            {
+                "hostname": "STUDENT-PC-004",
+                "reason": "High memory usage detected: 78.2% (threshold: 70%)",
+                "severity": "medium"
+            },
+            {
+                "hostname": "STUDENT-PC-005",
+                "reason": "Suspicious domain access detected: proxy-server.com",
+                "severity": "high"
+            }
+        ]
+        
+        alert_ids = []
+        for alert in test_alerts:
+            alert_id = db.insert_alert(
+                hostname=alert["hostname"],
+                reason=alert["reason"],
+                severity=alert["severity"]
+            )
+            alert_ids.append(alert_id)
+        
+        logger.info(f"Generated {len(test_alerts)} test alerts for college prototype")
+        
+        return {
+            "success": True,
+            "message": f"Generated {len(test_alerts)} test alerts",
+            "alert_ids": alert_ids,
+            "alerts_created": test_alerts
+        }
+    
+    except Exception as e:
+        logger.error(f"Error generating test alerts: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate test alerts: {str(e)}"
+        )

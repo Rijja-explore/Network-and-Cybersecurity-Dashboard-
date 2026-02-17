@@ -4,9 +4,9 @@ import Navbar from '../components/Navbar';
 import StatCard from '../components/StatCard';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getWeeklyStats, getActiveAlerts, fetchLogs, addBlockedDomain, blockDomainOnStudent } from '../services/api';
+import { getWeeklyStats, getActiveAlerts, fetchLogs, addBlockedDomain, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Activity, Server, AlertTriangle, TrendingUp, Wifi, X, Shield, Lock } from 'lucide-react';
+import { Activity, Server, AlertTriangle, TrendingUp, Wifi, X, Shield, Lock, Unlock } from 'lucide-react';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -18,6 +18,7 @@ const Dashboard = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showDestinationsModal, setShowDestinationsModal] = useState(false);
   const [blockingDomain, setBlockingDomain] = useState(null);
+  const [blockedDomains, setBlockedDomains] = useState(new Set());
 
   const fetchData = async () => {
     try {
@@ -76,15 +77,29 @@ const Dashboard = () => {
     
     setBlockingDomain(domain);
     try {
-      // Send remote block command to student machine
-      await blockDomainOnStudent(studentId, domain, 'Blocked from dashboard');
-      alert(`✅ Block command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will enforce this block within a few seconds.`);
+      const isCurrentlyBlocked = blockedDomains.has(domain);
+      
+      if (isCurrentlyBlocked) {
+        // Unblock the domain
+        await unblockDomainOnStudent(studentId, domain, 'Unblocked from dashboard');
+        setBlockedDomains(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(domain);
+          return newSet;
+        });
+        alert(`✅ Unblock command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will restore access within a few seconds.`);
+      } else {
+        // Block the domain
+        await blockDomainOnStudent(studentId, domain, 'Blocked from dashboard');
+        setBlockedDomains(prev => new Set(prev).add(domain));
+        alert(`✅ Block command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will enforce this block within a few seconds.`);
+      }
       
       // Refresh data after a short delay
       setTimeout(() => fetchData(), 500);
     } catch (error) {
-      console.error('Error blocking domain:', error);
-      alert(`❌ Failed to block domain: ${error}`);
+      console.error('Error blocking/unblocking domain:', error);
+      alert(`❌ Failed to ${blockedDomains.has(domain) ? 'unblock' : 'block'} domain: ${error}`);
     } finally {
       setBlockingDomain(null);
     }
@@ -107,9 +122,10 @@ const Dashboard = () => {
     bandwidth: (host.total_bandwidth / 1024 / 1024).toFixed(2),
   })) || [];
 
-  // CPU usage data from recent logs (realtime)
+  // CPU usage data from recent logs (realtime) - IST format
   const cpuData = logs.slice(0, 10).reverse().map((log, index) => ({
-    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-US', { 
+    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit', 
       minute: '2-digit',
       second: '2-digit'
@@ -118,9 +134,10 @@ const Dashboard = () => {
     hostname: log.hostname
   }));
 
-  // Memory usage data from recent logs
+  // Memory usage data from recent logs - IST format
   const memoryData = logs.slice(0, 10).reverse().map((log, index) => ({
-    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-US', { 
+    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit', 
       minute: '2-digit',
       second: '2-digit'
@@ -140,9 +157,10 @@ const Dashboard = () => {
     return acc;
   }, []).slice(0, 7);
 
-  // Active connections data from recent logs
+  // Active connections data from recent logs - IST format
   const connectionsData = logs.slice(0, 10).reverse().map((log, index) => ({
-    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-US', { 
+    time: new Date(log.raw_timestamp || log.timestamp).toLocaleTimeString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit', 
       minute: '2-digit',
       second: '2-digit'
@@ -172,7 +190,7 @@ const Dashboard = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-300">System Overview</h3>
             <p className="text-sm text-gray-500">
-              Last updated: {lastUpdated.toLocaleTimeString()}
+              Last updated: {lastUpdated.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </p>
           </div>
           <RefreshTimer seconds={countdown} onRefresh={handleManualRefresh} />
@@ -658,11 +676,17 @@ const Dashboard = () => {
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex flex-wrap gap-1 max-w-xs items-center">
-                        {/* Show destinations if available, otherwise fallback to websites */}
+                        {/* Show destinations with domain names first, IPs as fallback */}
                         {(log.destinations && log.destinations.length > 0) ? (
                           <>
                             {log.destinations.slice(0, 2).map((dest, i) => {
-                              const displayText = dest.domain || `${dest.ip}:${dest.port || '?'}`;
+                              // Prioritize domain names over IPs for admin readability
+                              const displayText = dest.domain 
+                                ? dest.domain
+                                : dest.ip && dest.ip !== '127.0.0.1' && dest.ip !== '0.0.0.0'
+                                  ? `${dest.ip}:${dest.port || '?'}`
+                                  : 'Local Connection';
+                              
                               const tooltipText = dest.domain 
                                 ? `${dest.domain} (${dest.ip}:${dest.port})`
                                 : `${dest.ip}:${dest.port}`;
@@ -670,7 +694,11 @@ const Dashboard = () => {
                               return (
                                 <span 
                                   key={i} 
-                                  className="px-2 py-1 bg-neon-cyan/20 text-neon-cyan text-xs rounded-full"
+                                  className={`px-2 py-1 text-xs rounded-full ${
+                                    dest.domain 
+                                      ? 'bg-neon-cyan/20 text-neon-cyan' 
+                                      : 'bg-gray-600/20 text-gray-400'
+                                  }`}
                                   title={tooltipText}
                                 >
                                   {displayText.length > 20 ? displayText.substring(0, 20) + '...' : displayText}
@@ -712,7 +740,7 @@ const Dashboard = () => {
                       </div>
                     </td>
                     <td className="py-3 px-2 text-gray-400 text-xs">
-                      {log.timestamp}
+                      {new Date(log.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                     </td>
                   </motion.tr>
                 ))}
@@ -794,17 +822,30 @@ const Dashboard = () => {
                         <button
                           onClick={() => handleBlockDomain(dest.domain || dest.ip, selectedStudent?.hostname)}
                           disabled={blockingDomain === (dest.domain || dest.ip)}
-                          className="px-3 py-1.5 bg-status-critical/20 hover:bg-status-critical/30 text-status-critical rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            blockedDomains.has(dest.domain || dest.ip)
+                              ? 'bg-status-success/20 hover:bg-status-success/30 text-status-success'
+                              : 'bg-status-critical/20 hover:bg-status-critical/30 text-status-critical'
+                          }`}
                         >
                           {blockingDomain === (dest.domain || dest.ip) ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-status-critical border-t-transparent rounded-full animate-spin"></div>
-                              Blocking...
+                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                              {blockedDomains.has(dest.domain || dest.ip) ? 'Unblocking...' : 'Blocking...'}
                             </>
                           ) : (
                             <>
-                              <Lock className="w-4 h-4" />
-                              Block
+                              {blockedDomains.has(dest.domain || dest.ip) ? (
+                                <>
+                                  <Unlock className="w-4 h-4" />
+                                  Unblock
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="w-4 h-4" />
+                                  Block
+                                </>
+                              )}
                             </>
                           )}
                         </button>
@@ -829,17 +870,30 @@ const Dashboard = () => {
                       <button
                         onClick={() => handleBlockDomain(website, selectedStudent?.hostname)}
                         disabled={blockingDomain === website}
-                        className="px-3 py-1.5 bg-status-critical/20 hover:bg-status-critical/30 text-status-critical rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          blockedDomains.has(website)
+                            ? 'bg-status-success/20 hover:bg-status-success/30 text-status-success'
+                            : 'bg-status-critical/20 hover:bg-status-critical/30 text-status-critical'
+                        }`}
                       >
                         {blockingDomain === website ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-status-critical border-t-transparent rounded-full animate-spin"></div>
-                            Blocking...
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                            {blockedDomains.has(website) ? 'Unblocking...' : 'Blocking...'}
                           </>
                         ) : (
                           <>
-                            <Lock className="w-4 h-4" />
-                            Block
+                            {blockedDomains.has(website) ? (
+                              <>
+                                <Unlock className="w-4 h-4" />
+                                Unblock
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-4 h-4" />
+                                Block
+                              </>
+                            )}
                           </>
                         )}
                       </button>

@@ -54,9 +54,12 @@ const Students = () => {
     try {
       const result = await blockDomainOnStudent(studentId, domain, 'Blocked by admin from dashboard');
       alert(`✅ Block command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will enforce this block within a few seconds.`);
-      fetchData(); // Refresh the list
+      // Force immediate refresh to update the UI
+      await fetchData();
     } catch (error) {
       alert(`❌ Failed to block website: ${error}`);
+      // Refresh anyway to sync state
+      fetchData();
     }
   };
 
@@ -64,9 +67,12 @@ const Students = () => {
     try {
       const result = await unblockDomainOnStudent(studentId, domain, 'Unblocked by admin from dashboard');
       alert(`✅ Unblock command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will restore access within a few seconds.`);
-      fetchData(); // Refresh the list
+      // Force immediate refresh to update the UI
+      await fetchData();
     } catch (error) {
       alert(`❌ Failed to unblock website: ${error}`);
+      // Refresh anyway to sync state
+      fetchData();
     }
   };
 
@@ -97,7 +103,7 @@ const Students = () => {
           <div>
             <h3 className="text-lg font-semibold text-soc-text">Active Network Endpoints</h3>
             <p className="text-sm text-gray-400">
-              Last updated: {lastUpdated.toLocaleTimeString()}
+              Last updated: {lastUpdated.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </p>
           </div>
           <RefreshTimer seconds={countdown} onRefresh={handleManualRefresh} />
