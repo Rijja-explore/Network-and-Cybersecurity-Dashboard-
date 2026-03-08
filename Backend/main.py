@@ -131,7 +131,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             error=True,
             message="Internal server error",
             detail=str(exc) if settings.DEBUG else "An unexpected error occurred",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now().isoformat()
         ).model_dump()
     )
 
@@ -155,7 +155,7 @@ async def health_check() -> HealthCheckResponse:
         status="healthy",
         service=settings.APP_NAME,
         version=settings.APP_VERSION,
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.now().isoformat()
     )
 
 
@@ -177,7 +177,7 @@ async def health_check_alternate() -> HealthCheckResponse:
         status="healthy",
         service=settings.APP_NAME,
         version=settings.APP_VERSION,
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.now().isoformat()
     )
 
 
@@ -235,19 +235,25 @@ async def get_student_logs():
             elif not isinstance(destinations_data, list):
                 destinations_data = []
             
-            # Extract unique domains and IPs from destinations
+            # Extract unique domains from destinations; keep raw objects for modal
             all_websites = set(website_list)
-            all_destinations = []
             for dest in destinations_data:
                 domain = dest.get('domain')
-                ip = dest.get('ip')
-                port = dest.get('port')
                 if domain:
                     all_websites.add(domain)
-                    all_destinations.append(f"{domain} ({ip}:{port})" if ip and port else domain)
-                elif ip:
-                    all_destinations.append(f"{ip}:{port}" if port else ip)
+            # raw destination objects (with domain, ip, port) for the modal
+            all_destinations = destinations_data
             
+            # Get open_tabs (currently open browser tabs)
+            open_tabs_data = activity.get('open_tabs', [])
+            if isinstance(open_tabs_data, str):
+                try:
+                    open_tabs_data = json.loads(open_tabs_data)
+                except (json.JSONDecodeError, TypeError):
+                    open_tabs_data = []
+            elif not isinstance(open_tabs_data, list):
+                open_tabs_data = []
+
             # Get CPU percentage
             cpu_percent = activity.get('cpu_percent', 0) or 0
             
@@ -256,6 +262,7 @@ async def get_student_logs():
             disk_percent = activity.get('disk_percent', 0) or 0
             active_connections = activity.get('active_connections', 0) or 0
             
+            all_websites_list = sorted(all_websites)
             formatted_logs.append({
                 "student_id": activity['hostname'],
                 "hostname": activity['hostname'],
@@ -267,10 +274,11 @@ async def get_student_logs():
                 "network_mb": round(total_network / (1024 * 1024), 2),
                 "apps": top_apps,
                 "processes": process_list,
-                "websites": list(all_websites)[:5],  # Show first 5
-                "all_websites": list(all_websites),  # All for modal
-                "destinations": destinations_data[:5],  # Show first 5
-                "all_destinations": all_destinations,  # All for modal  
+                "websites": all_websites_list[:5],       # preview (5 items)
+                "all_websites": all_websites_list,        # all for modal
+                "destinations": destinations_data[:5],    # preview (5 items)
+                "all_destinations": all_destinations,     # all for modal
+                "open_tabs": open_tabs_data,              # currently open browser tabs
                 "bytes_sent": activity['bytes_sent'],
                 "bytes_recv": activity['bytes_recv'],
                 "timestamp": activity['timestamp'],
@@ -298,8 +306,8 @@ async def get_student_logs():
                 "processes": [],
                 "websites": [],
                 "destinations": [],
-                "timestamp": datetime.utcnow().isoformat(),
-                "raw_timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now().isoformat(),
+                "raw_timestamp": datetime.now().isoformat(),
                 "activity_id": 0
             }
         ]
@@ -457,7 +465,7 @@ async def test_blocked_processes():
         # Create test activity with blocked processes
         test_activity = ActivityRequest(
             hostname="TEST-STUDENT-PC",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now().isoformat(),
             bytes_sent=1024000,
             bytes_recv=2048000,
             cpu_percent=45.2,

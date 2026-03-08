@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getAlerts, resolveAlert, generateTestAlerts } from '../services/api';
-import { AlertTriangle, CheckCircle, Filter, Search, Plus } from 'lucide-react';
+import { getAlerts, resolveAlert } from '../services/api';
+import { AlertTriangle, CheckCircle, Filter, Search } from 'lucide-react';
 
 const Alerts = () => {
   const [alerts, setAlerts] = useState([]);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(10);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [severityFilter, setSeverityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,13 +33,13 @@ const Alerts = () => {
     fetchData();
   }, []);
 
-  // Auto-refresh timer
+  // Auto-refresh timer (FASTER for real-time alerts - 10 seconds)
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           fetchData();
-          return 30;
+          return 10;  // Reduced from 30 to 10 seconds for real-time alerts
         }
         return prev - 1;
       });
@@ -80,17 +80,6 @@ const Alerts = () => {
     }
   };
 
-  const handleGenerateTestAlerts = async () => {
-    try {
-      const result = await generateTestAlerts();
-      alert(`✅ Test alerts generated successfully!\n\n${result.message}\n\nRefreshing alerts list...`);
-      fetchData();
-    } catch (error) {
-      console.error('Failed to generate test alerts:', error);
-      alert(`❌ Failed to generate test alerts: ${error}`);
-    }
-  };
-
   const alertStats = {
     total: alerts.length,
     critical: alerts.filter((a) => a.severity?.toLowerCase() === 'critical').length,
@@ -128,14 +117,6 @@ const Alerts = () => {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleGenerateTestAlerts}
-              className="px-4 py-2 bg-neon-blue hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
-              title="Generate test alerts for college prototype"
-            >
-              <Plus className="w-4 h-4" />
-              Generate Test Alerts
-            </button>
             <RefreshTimer seconds={countdown} onRefresh={handleManualRefresh} />
           </div>
         </motion.div>

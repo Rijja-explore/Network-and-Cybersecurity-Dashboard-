@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getDomainPolicies, addBlockedDomain, removeDomainPolicy, getPolicySummary, getFirewallRules, fetchLogs, testBlockedProcesses } from '../services/api';
+import { getDomainPolicies, addBlockedDomain, removeDomainPolicy, getPolicySummary, getFirewallRules, fetchLogs, testBlockedProcesses, getStudents, blockDomainOnStudent } from '../services/api';
 import { Lock, Unlock, Plus, AlertTriangle, Shield, Activity, Server, Network, CheckCircle, Play } from 'lucide-react';
 
 const NetworkHealth = () => {
@@ -144,12 +144,50 @@ const NetworkHealth = () => {
 
   const handleTestBlockedProcesses = async () => {
     try {
+      // 1. Run the standard test to trigger policy violations
       const result = await testBlockedProcesses();
-      alert(`✅ Test completed!\n\nSimulated student with blocked processes: ${result.test_processes.join(', ')}\n\nViolation detected: ${result.violation_detected ? 'YES' : 'NO'}\nAlert created: ${result.alert_id ? 'YES' : 'NO'}\n\nCheck the Dashboard and Alerts tabs to see the results!`);
-      fetchData(); // Refresh to show any new blocks
+
+      // 2. Fetch all currently connected students
+      const allStudents = await getStudents();
+      if (!allStudents || allStudents.length === 0) {
+        alert(`✅ Policy test triggered.\n\nNo connected students found to push block commands.`);
+        fetchData();
+        return;
+      }
+
+      // 3. For each student, block all their currently open websites
+      const BLOCKED_DOMAINS = ['thepiratebay.org', 'torrent.com', 'bittorrent.com', 'proxy.com', 'vpn.com'];
+      let totalBlocked = 0;
+      const studentResults = [];
+
+      for (const student of allStudents) {
+        const sitesToBlock = [
+          ...BLOCKED_DOMAINS,
+          ...(student.open_tabs || []),
+        ];
+        const unique = [...new Set(sitesToBlock)].filter(Boolean);
+        try {
+          await Promise.all(unique.map(domain =>
+            blockDomainOnStudent(student.hostname, domain, 'Auto-block: policy violation test')
+          ));
+          totalBlocked += unique.length;
+          studentResults.push(`${student.hostname}: ${unique.length} sites`);
+        } catch (e) {
+          studentResults.push(`${student.hostname}: failed`);
+        }
+      }
+
+      alert(
+        `✅ Auto-Block Test Complete!\n\n` +
+        `Students targeted: ${allStudents.length}\n` +
+        `Total block commands sent: ${totalBlocked}\n\n` +
+        `Per student:\n${studentResults.join('\n')}\n\n` +
+        `Check each student agent — blocks will apply within seconds.`
+      );
+      fetchData();
     } catch (error) {
-      console.error('Failed to test blocked processes:', error);
-      alert(`❌ Failed to test blocked processes: ${error}`);
+      console.error('Failed to run auto-block test:', error);
+      alert(`❌ Failed to run auto-block test: ${error}`);
     }
   };
 

@@ -17,7 +17,8 @@ export const generateReport = async () => {
 };
 
 // Base API URL - Update this to your backend URL
-const API_BASE_URL = 'http://localhost:8001';
+// Backend runs on port 8000 by default: uvicorn main:app --host 0.0.0.0 --port 8000
+const API_BASE_URL = 'http://localhost:8000';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -247,6 +248,7 @@ export const getStudents = async () => {
           ip: log.hostname,
           processes: log.apps || log.processes || [],
           websites: log.websites || [],
+          open_tabs: log.open_tabs || [],
           destinations: log.destinations || [],
           all_websites: log.all_websites || log.websites || [],
           all_destinations: log.all_destinations || log.destinations || [],
@@ -382,6 +384,20 @@ export const getDomainPolicies = async () => {
 };
 
 /**
+ * Strip protocol/path from a domain for safe API usage.
+ */
+const cleanDomain = (raw) => {
+  raw = (raw || '').trim().replace(/\/$/, '');
+  try {
+    if (raw.includes('://')) {
+      const url = new URL(raw);
+      return url.hostname;
+    }
+  } catch (_) {}
+  return raw.split('/')[0];
+};
+
+/**
  * Add domain to block list
  * @param {string} domain - Domain to block
  * @param {string} reason - Reason for blocking
@@ -389,9 +405,10 @@ export const getDomainPolicies = async () => {
  */
 export const addBlockedDomain = async (domain, reason = 'Policy violation') => {
   try {
-    console.log(`🚫 Adding domain to block list: ${domain} (${reason})`);
+    const clean = cleanDomain(domain);
+    console.log(`🚫 Adding domain to block list: ${clean} (${reason})`);
     const response = await api.post('/policy/domains/block', {
-      domain,
+      domain: clean,
       policy: 'blocked',
       reason
     });
@@ -428,8 +445,9 @@ export const addAllowedDomain = async (domain) => {
  */
 export const removeDomainPolicy = async (domain) => {
   try {
-    console.log(`🗑️ Removing domain policy for: ${domain}`);
-    const response = await api.delete(`/policy/domains/${domain}`);
+    const clean = cleanDomain(domain);
+    console.log(`🗑️ Removing domain policy for: ${clean} (original: ${domain})`);
+    const response = await api.delete(`/policy/domains/${encodeURIComponent(clean)}`);
     console.log(`✅ Domain policy removed successfully:`, response.data);
     return response.data;
   } catch (error) {

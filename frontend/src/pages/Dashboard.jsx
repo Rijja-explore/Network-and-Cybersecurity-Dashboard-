@@ -44,13 +44,13 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Auto-refresh timer
+  // Auto-refresh timer (FASTER for real-time alerts)
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           fetchData();
-          return 30;
+          return 10;  // Reduced from 30 to 10 seconds for real-time
         }
         return prev - 1;
       });
@@ -795,114 +795,82 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              {/* Destinations List */}
-              <div className="space-y-2">
-                {(selectedStudent.destinations && selectedStudent.destinations.length > 0) ? (
-                  selectedStudent.destinations.map((dest, index) => {
-                    const displayName = dest.domain || dest.ip;
-                    const fullInfo = dest.domain 
-                      ? `${dest.domain} (${dest.ip}:${dest.port})`
-                      : `${dest.ip}:${dest.port}`;
-                    
-                    return (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="flex items-center justify-between p-3 bg-cyber-darker rounded-lg border border-cyber-border/50 hover:border-neon-cyan/30 transition-colors group"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Wifi className="w-4 h-4 text-neon-cyan" />
-                            <p className="text-gray-200 font-medium">{displayName}</p>
+              {/* Currently Open Tabs — highest priority */}
+              {(() => {
+                const openTabs = selectedStudent.open_tabs || [];
+                // All destinations with a real domain (filter out raw IPs)
+                const netDests = (selectedStudent.all_destinations || selectedStudent.destinations || [])
+                  .filter(d => d && typeof d === 'object' && d.domain && d.domain !== d.ip);
+                // Merge open_tabs + all_websites (deduplicated) for a single current list
+                const openTabSet = new Set(openTabs);
+                const allCurrent = [
+                  ...openTabs,
+                  ...(selectedStudent.all_websites || selectedStudent.websites || []).filter(s => !openTabSet.has(s))
+                ];
+
+                return (
+                  <div className="space-y-4">
+                    {/* All websites — merged, deduplicated */}
+                    {(() => {
+                      const merged = [...new Set([
+                        ...allCurrent,
+                        ...netDests.map(d => d.domain),
+                      ])];
+                      if (merged.length === 0) return (
+                        <p className="text-center text-gray-500 py-8">No website data available for this student</p>
+                      );
+                      // Build domain → IP lookup from network destinations
+                      const domainIpMap = {};
+                      netDests.forEach(d => { if (d.domain && d.ip && d.ip !== d.domain) domainIpMap[d.domain] = d.ip; });
+
+                      return (
+                        <div>
+                          <h3 className="text-sm font-semibold text-neon-cyan mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse inline-block"></span>
+                            Websites ({merged.length})
+                          </h3>
+                          <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
+                            {merged.map((site, i) => (
+                              <motion.div key={i}
+                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.02 }}
+                                className="flex items-center justify-between p-2.5 bg-cyber-darker rounded-lg border border-cyber-border/50 hover:border-neon-cyan/30 transition-colors"
+                              >
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Wifi className="w-4 h-4 text-neon-cyan shrink-0" />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-gray-200 font-medium text-sm truncate">{site}</span>
+                                    {domainIpMap[site] && (
+                                      <span className="text-gray-500 text-xs font-mono truncate">{domainIpMap[site]}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button onClick={() => handleBlockDomain(site, selectedStudent?.hostname)}
+                                  disabled={blockingDomain === site}
+                                  className={`ml-3 px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 shrink-0 disabled:opacity-50 shadow ${
+                                    blockedDomains.has(site)
+                                      ? 'bg-gradient-to-r from-green-700 to-green-500 hover:from-green-600 hover:to-green-400 text-white'
+                                      : 'bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white'
+                                  }`}>
+                                  {blockingDomain === site
+                                    ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                    : blockedDomains.has(site)
+                                      ? <><Unlock className="w-3 h-3"/>Unblock</>
+                                      : <><Lock className="w-3 h-3"/>Block</>}
+                                </button>
+                              </motion.div>
+                            ))}
                           </div>
-                          <p className="text-xs text-gray-500 ml-6">{fullInfo}</p>
                         </div>
-                        <button
-                          onClick={() => handleBlockDomain(dest.domain || dest.ip, selectedStudent?.hostname)}
-                          disabled={blockingDomain === (dest.domain || dest.ip)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                            blockedDomains.has(dest.domain || dest.ip)
-                              ? 'bg-status-success/20 hover:bg-status-success/30 text-status-success'
-                              : 'bg-status-critical/20 hover:bg-status-critical/30 text-status-critical'
-                          }`}
-                        >
-                          {blockingDomain === (dest.domain || dest.ip) ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                              {blockedDomains.has(dest.domain || dest.ip) ? 'Unblocking...' : 'Blocking...'}
-                            </>
-                          ) : (
-                            <>
-                              {blockedDomains.has(dest.domain || dest.ip) ? (
-                                <>
-                                  <Unlock className="w-4 h-4" />
-                                  Unblock
-                                </>
-                              ) : (
-                                <>
-                                  <Lock className="w-4 h-4" />
-                                  Block
-                                </>
-                              )}
-                            </>
-                          )}
-                        </button>
-                      </motion.div>
-                    );
-                  })
-                ) : (selectedStudent.websites && selectedStudent.websites.length > 0) ? (
-                  selectedStudent.websites.map((website, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="flex items-center justify-between p-3 bg-cyber-darker rounded-lg border border-cyber-border/50 hover:border-neon-cyan/30 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Wifi className="w-4 h-4 text-neon-cyan" />
-                          <p className="text-gray-200 font-medium">{website}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleBlockDomain(website, selectedStudent?.hostname)}
-                        disabled={blockingDomain === website}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                          blockedDomains.has(website)
-                            ? 'bg-status-success/20 hover:bg-status-success/30 text-status-success'
-                            : 'bg-status-critical/20 hover:bg-status-critical/30 text-status-critical'
-                        }`}
-                      >
-                        {blockingDomain === website ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                            {blockedDomains.has(website) ? 'Unblocking...' : 'Blocking...'}
-                          </>
-                        ) : (
-                          <>
-                            {blockedDomains.has(website) ? (
-                              <>
-                                <Unlock className="w-4 h-4" />
-                                Unblock
-                              </>
-                            ) : (
-                              <>
-                                <Lock className="w-4 h-4" />
-                                Block
-                              </>
-                            )}
-                          </>
-                        )}
-                      </button>
-                    </motion.div>
-                  ))
-                ) : (
-                  <p className="text-center text-gray-500 py-8">No network destinations found</p>
-                )}
-              </div>
+                      );
+                    })()}
+
+                    {false && (
+                      <p className="text-center text-gray-500 py-8">No website data available for this student</p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Footer Info */}
               <div className="mt-6 p-4 bg-neon-blue/10 border border-neon-blue/30 rounded-lg">

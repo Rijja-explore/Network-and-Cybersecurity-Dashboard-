@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import BlockButton from './BlockButton';
 
-const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) => {
+const StudentsTable = ({ students, onBlockWebsite, onUnblockWebsite, onBlockAll }) => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const formatBandwidth = (bytes) => {
@@ -16,11 +15,13 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
   };
 
   const formatLastSeen = (timestamp) => {
-    return new Date(timestamp).toLocaleString('en-US', {
+    return new Date(timestamp).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     });
   };
 
@@ -28,27 +29,17 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
     setExpandedRow(expandedRow === index ? null : index);
   };
 
-  const handleBlockWebsite = async (studentId, domain) => {
+  const handleBlock = async (studentId, domain) => {
     if (onBlockWebsite) {
-      try {
-        console.log(`🚫 Blocking ${domain} for student ${studentId}`);
-        await onBlockWebsite(studentId, domain);
-        console.log(`✅ Block request completed for ${domain}`);
-      } catch (error) {
-        console.error('Block website error:', error);
-      }
+      try { await onBlockWebsite(studentId, domain); }
+      catch (e) { console.error('Block error:', e); }
     }
   };
 
-  const handleUnblockWebsite = async (studentId, domain) => {
+  const handleUnblock = async (studentId, domain) => {
     if (onUnblockWebsite) {
-      try {
-        console.log(`✅ Unblocking ${domain} for student ${studentId}`);
-        await onUnblockWebsite(studentId, domain);
-        console.log(`✅ Unblock request completed for ${domain}`);
-      } catch (error) {
-        console.error('Unblock website error:', error);
-      }
+      try { await onUnblockWebsite(studentId, domain); }
+      catch (e) { console.error('Unblock error:', e); }
     }
   };
 
@@ -71,7 +62,6 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
               <th className="px-6 py-4 text-left text-sm font-semibold text-soc-text">Running Processes</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-soc-text">Bandwidth Used</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-soc-text">Last Seen</th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-soc-text">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -106,144 +96,73 @@ const StudentsTable = ({ students, onBlock, onBlockWebsite, onUnblockWebsite }) 
                   </td>
                   <td className="px-6 py-4 text-soc-text">{formatBandwidth(student.bandwidth)}</td>
                   <td className="px-6 py-4 text-gray-400 text-sm">
-                    {formatLastSeen(student.lastSeen)}
-                  </td>
-                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <BlockButton 
-                      studentIp={student.ip} 
-                      studentName={student.hostname} 
-                      onBlock={onBlock} 
-                    />
+                    <div className="flex items-center gap-2">
+                      <span>{formatLastSeen(student.lastSeen)}</span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const allSites = [...new Set([
+                            ...(student.all_websites || student.websites || []),
+                            ...(student.open_tabs || []),
+                            ...((student.destinations || []).map(d => d.domain).filter(Boolean)),
+                          ])];
+                          if (onBlockAll) await onBlockAll(student.hostname, allSites);
+                        }}
+                        className="px-2 py-1 bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white rounded-full text-xs font-semibold transition-all shadow shrink-0"
+                      >🔒 Block All</button>
+                    </div>
                   </td>
                 </tr>
                 
-                {/* Expanded row showing all websites with block buttons */}
-                {expandedRow === index && (
-                  <tr className="bg-gray-900/50 border-b border-gray-700">
-                    <td colSpan="6" className="px-6 py-4">
-                      <div className="space-y-4">
-                        {/* Currently Blocked Websites Section */}
-                        {student.blocked_domains && student.blocked_domains.length > 0 && (
-                          <>
-                            <h4 className="text-sm font-semibold text-soc-alert mb-2 flex items-center">
-                              🚫 Currently Blocked ({student.blocked_domains.length}):
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
-                              {student.blocked_domains.map((domain, idx) => (
-                                <div
-                                  key={`blocked-${idx}`}
-                                  className="flex items-center justify-between bg-red-900/30 border border-red-700 rounded-lg px-3 py-2"
-                                >
-                                  <span className="text-red-300 text-sm font-mono truncate flex-1">
-                                    {domain}
-                                  </span>
-                                  <button
-                                    onClick={() => handleUnblockWebsite(student.hostname, domain)}
-                                    className="ml-2 px-3 py-1 bg-soc-success hover:bg-green-600 text-white rounded text-xs font-medium transition-colors"
-                                    title="Unblock this website"
-                                  >
-                                    Unblock
-                                  </button>
+                {/* Expanded row — all websites + live connections in ONE block */}
+                {expandedRow === index && (() => {
+                  const allSites = [...new Set([
+                    ...(student.all_websites || student.websites || []),
+                    ...(student.open_tabs || []),
+                    ...((student.destinations || []).map(d => d.domain).filter(Boolean)),
+                  ])];
+                  // Build domain → IP map from destinations for display
+                  const domainIpMap = {};
+                  (student.destinations || []).forEach(d => {
+                    if (d.domain && d.ip) domainIpMap[d.domain] = d.ip;
+                  });
+                  return (
+                    <tr className="bg-gray-900/50 border-b border-gray-700">
+                      <td colSpan="5" className="px-6 py-4">
+                        <h4 className="text-sm font-semibold text-soc-text mb-3">
+                          🌐 Websites ({allSites.length})
+                          <span className="ml-2 text-xs text-gray-500 font-normal">Click row to collapse</span>
+                        </h4>
+                        {allSites.length === 0 ? (
+                          <p className="text-gray-500 text-sm">No website data available.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto pr-1">
+                            {allSites.map((site, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-gray-900 rounded-xl px-3 py-2 border border-gray-700 hover:border-gray-500 transition-colors">
+                                <div className="flex flex-col flex-1 mr-2 min-w-0">
+                                  <span className="text-gray-200 text-sm font-mono truncate">{site}</span>
+                                  {domainIpMap[site] && (
+                                    <span className="text-gray-500 text-xs font-mono truncate">{domainIpMap[site]}</span>
+                                  )}
                                 </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-
-                        {/* Show message if no blocked domains */}
-                        {(!student.blocked_domains || student.blocked_domains.length === 0) && (
-                          <div className="mb-4 p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
-                            <p className="text-sm text-gray-400">✅ No domains currently blocked for this student</p>
+                                <div className="flex gap-1.5 shrink-0">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleBlock(student.hostname, site); }}
+                                    className="px-2.5 py-1 bg-gradient-to-r from-red-700 to-red-500 hover:from-red-600 hover:to-red-400 text-white rounded-full text-xs font-semibold transition-all shadow"
+                                  >🔒 Block</button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleUnblock(student.hostname, site); }}
+                                    className="px-2.5 py-1 bg-gradient-to-r from-green-700 to-green-500 hover:from-green-600 hover:to-green-400 text-white rounded-full text-xs font-semibold transition-all shadow"
+                                  >🔓 Unblock</button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
-
-                        {/* Websites Accessed Section */}
-                        {student.websites && student.websites.length > 0 && (
-                          <>
-                            <h4 className="text-sm font-semibold text-soc-text mb-2">
-                              🌐 Websites Accessed:
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {student.websites.map((website, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2 border border-gray-700"
-                                >
-                                  <span className="text-gray-300 text-sm font-mono truncate flex-1">
-                                    {website}
-                                  </span>
-                                  <div className="flex space-x-1 ml-2">
-                                    <button
-                                      onClick={() => handleBlockWebsite(student.hostname, website)}
-                                      className="px-3 py-1 bg-soc-alert hover:bg-red-600 text-white rounded text-xs font-medium transition-colors"
-                                      title="Block this website"
-                                    >
-                                      Block
-                                    </button>
-                                    <button
-                                      onClick={() => handleUnblockWebsite(student.hostname, website)}
-                                      className="px-3 py-1 bg-soc-success hover:bg-green-600 text-white rounded text-xs font-medium transition-colors"
-                                      title="Unblock this website"
-                                    >
-                                      Unblock
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-
-                        {/* Show destinations if available */}
-                        {student.destinations && student.destinations.length > 0 && (
-                          <>
-                            <h4 className="text-sm font-semibold text-soc-text mt-4 mb-2">
-                              📡 Active Network Connections ({student.destinations.length}):
-                            </h4>
-                            <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 max-h-64 overflow-y-auto">
-                              <table className="w-full text-xs">
-                                <thead className="text-gray-400 border-b border-gray-700 sticky top-0 bg-gray-800">
-                                  <tr>
-                                    <th className="text-left pb-2 pr-2">Domain</th>
-                                    <th className="text-left pb-2 pr-2">IP Address</th>
-                                    <th className="text-left pb-2 pr-2">Port</th>
-                                    <th className="text-right pb-2">Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="text-gray-300">
-                                  {student.destinations.map((dest, dIdx) => (
-                                    <tr key={dIdx} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                                      <td className="py-2 pr-2 font-mono text-soc-accent">
-                                        {dest.domain || <span className="text-gray-600 italic">N/A</span>}
-                                      </td>
-                                      <td className="py-2 pr-2 font-mono">{dest.ip}</td>
-                                      <td className="py-2 pr-2 font-mono">{dest.port}</td>
-                                      <td className="py-2 text-right">
-                                        <div className="flex justify-end space-x-1">
-                                          <button
-                                            onClick={() => handleBlockWebsite(student.hostname, dest.domain || dest.ip)}
-                                            className="px-2 py-1 bg-soc-alert hover:bg-red-600 text-white rounded text-xs font-medium transition-colors"
-                                            title={`Block ${dest.domain || dest.ip}`}
-                                          >
-                                            Block
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-2">
-                              ⚠️ <strong>Note:</strong> Blocking a domain/IP affects all traffic to that destination. 
-                              Blocking DNS servers (port 53) or gateway IPs may disrupt internet connectivity.
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                      </td>
+                    </tr>
+                  );
+                })()}
               </React.Fragment>
             ))}
           </tbody>

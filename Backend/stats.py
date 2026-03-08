@@ -70,7 +70,7 @@ class StatisticsEngine:
             alert_count=raw_stats['alert_count'],
             alerts_by_severity=alerts_by_severity,
             top_bandwidth_hosts=top_hosts,
-            generated_at=datetime.utcnow().isoformat()
+            generated_at=datetime.now().isoformat()
         )
     
     def get_bandwidth_summary(self) -> Dict[str, Any]:

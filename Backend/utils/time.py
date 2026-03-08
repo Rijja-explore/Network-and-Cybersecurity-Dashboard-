@@ -8,22 +8,22 @@ from typing import Optional
 
 def get_utc_now() -> datetime:
     """
-    Get current UTC datetime.
+    Get current local datetime.
     
     Returns:
-        datetime: Current UTC time
+        datetime: Current local time
     """
-    return datetime.utcnow()
+    return datetime.now()
 
 
 def get_utc_now_iso() -> str:
     """
-    Get current UTC datetime in ISO format.
+    Get current local datetime in ISO format.
     
     Returns:
-        str: Current UTC time in ISO 8601 format
+        str: Current local time in ISO 8601 format
     """
-    return datetime.utcnow().isoformat()
+    return datetime.now().isoformat()
 
 
 def parse_iso_timestamp(timestamp: str) -> Optional[datetime]:
@@ -49,7 +49,7 @@ def get_week_ago() -> datetime:
     Returns:
         datetime: Time 7 days ago
     """
-    return datetime.utcnow() - timedelta(days=7)
+    return datetime.now() - timedelta(days=7)
 
 
 def get_week_ago_iso() -> str:
@@ -106,7 +106,7 @@ def is_within_last_n_days(timestamp: str, days: int = 7) -> bool:
     if not dt:
         return False
     
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now() - timedelta(days=days)
     return dt >= cutoff
 
 
@@ -124,7 +124,7 @@ def get_human_readable_time_ago(timestamp: str) -> str:
     if not dt:
         return "Unknown"
     
-    now = datetime.utcnow()
+    now = datetime.now()
     delta = now - dt
     
     seconds = int(delta.total_seconds())

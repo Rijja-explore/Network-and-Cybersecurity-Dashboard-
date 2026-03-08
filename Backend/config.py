@@ -26,14 +26,14 @@ class Settings:
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
-    # Policy Configuration - Thresholds (College Prototype - Reduced Values)
-    BANDWIDTH_THRESHOLD_MB: int = int(os.getenv("BANDWIDTH_THRESHOLD_MB", "100"))  # Reduced from 500 to 100
-    CPU_THRESHOLD_PERCENT: int = int(os.getenv("CPU_THRESHOLD_PERCENT", "60"))     # Reduced from 80 to 60
-    MEMORY_THRESHOLD_PERCENT: int = int(os.getenv("MEMORY_THRESHOLD_PERCENT", "70"))  # Reduced from 85 to 70
-    DISK_THRESHOLD_PERCENT: int = int(os.getenv("DISK_THRESHOLD_PERCENT", "80"))    # Reduced from 90 to 80
-    CONNECTIONS_THRESHOLD: int = int(os.getenv("CONNECTIONS_THRESHOLD", "50"))     # Reduced from 100 to 50
-    UPLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("UPLOAD_RATE_THRESHOLD_MBPS", "25"))   # Reduced from 50 to 25
-    DOWNLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("DOWNLOAD_RATE_THRESHOLD_MBPS", "50"))  # Reduced from 100 to 50
+    # Policy Configuration - Thresholds (Real-Time Monitoring - Aggressive Values)
+    BANDWIDTH_THRESHOLD_MB: int = int(os.getenv("BANDWIDTH_THRESHOLD_MB", "50"))  # Reduced from 100 to 50 - triggers earlier
+    CPU_THRESHOLD_PERCENT: int = int(os.getenv("CPU_THRESHOLD_PERCENT", "35"))     # Reduced from 60 to 35 - catches more CPU usage
+    MEMORY_THRESHOLD_PERCENT: int = int(os.getenv("MEMORY_THRESHOLD_PERCENT", "45"))  # Reduced from 70 to 45 - earlier memory alerts
+    DISK_THRESHOLD_PERCENT: int = int(os.getenv("DISK_THRESHOLD_PERCENT", "65"))    # Reduced from 80 to 65 - early disk warnings
+    CONNECTIONS_THRESHOLD: int = int(os.getenv("CONNECTIONS_THRESHOLD", "25"))     # Reduced from 50 to 25 - catch connection anomalies
+    UPLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("UPLOAD_RATE_THRESHOLD_MBPS", "10"))   # Reduced from 25 to 10 - catch uploads
+    DOWNLOAD_RATE_THRESHOLD_MBPS: int = int(os.getenv("DOWNLOAD_RATE_THRESHOLD_MBPS", "20"))  # Reduced from 50 to 20 - catch downloads
     
     BLOCKED_KEYWORDS: List[str] = os.getenv(
         "BLOCKED_KEYWORDS", 

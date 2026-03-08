@@ -94,6 +94,7 @@ async def submit_activity(activity: ActivityRequest) -> ActivityResponse:
             websites=all_websites,
             destinations=activity.destinations,
             agent_timestamp=activity.timestamp,
+            open_tabs=activity.open_tabs or [],
             cpu_percent=activity.cpu_percent,
             memory_percent=activity.memory_percent,
             disk_percent=activity.disk_percent,

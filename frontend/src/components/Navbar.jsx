@@ -1,11 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Settings, User } from 'lucide-react';
+import { Bell, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getActiveAlerts } from '../services/api';
 
 const Navbar = ({ title }) => {
   const username = localStorage.getItem('username') || 'Admin';
   const navigate = useNavigate();
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const alerts = await getActiveAlerts();
+        setAlertCount(Array.isArray(alerts) ? alerts.length : 0);
+      } catch {
+        setAlertCount(0);
+      }
+    };
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -40,24 +56,17 @@ const Navbar = ({ title }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Notification Bell */}
+          {/* Notification Bell — only blinks when active alerts exist */}
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="p-2 hover:bg-cyber-border rounded-lg transition-colors relative"
+            onClick={() => navigate('/alerts')}
           >
-            <Bell className="w-5 h-5 text-gray-400" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-status-critical rounded-full animate-pulse"></span>
-          </motion.button>
-
-          {/* Settings */}
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-            className="p-2 hover:bg-cyber-border rounded-lg transition-colors"
-          >
-            <Settings className="w-5 h-5 text-gray-400" />
+            <Bell className={`w-5 h-5 ${alertCount > 0 ? 'text-status-critical' : 'text-gray-400'}`} />
+            {alertCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-status-critical rounded-full animate-pulse"></span>
+            )}
           </motion.button>
 
           {/* User Profile */}

@@ -48,31 +48,35 @@ const Students = () => {
     fetchData();
   };
 
-
-
   const handleBlockWebsite = async (studentId, domain) => {
     try {
-      const result = await blockDomainOnStudent(studentId, domain, 'Blocked by admin from dashboard');
-      alert(`✅ Block command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will enforce this block within a few seconds.`);
-      // Force immediate refresh to update the UI
-      await fetchData();
-    } catch (error) {
-      alert(`❌ Failed to block website: ${error}`);
-      // Refresh anyway to sync state
+      await blockDomainOnStudent(studentId, domain, 'Blocked by admin');
+      alert(`✅ Blocked: ${domain} on ${studentId}`);
       fetchData();
+    } catch (error) {
+      alert(`❌ Failed to block: ${error}`);
     }
   };
 
   const handleUnblockWebsite = async (studentId, domain) => {
     try {
-      const result = await unblockDomainOnStudent(studentId, domain, 'Unblocked by admin from dashboard');
-      alert(`✅ Unblock command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will restore access within a few seconds.`);
-      // Force immediate refresh to update the UI
-      await fetchData();
-    } catch (error) {
-      alert(`❌ Failed to unblock website: ${error}`);
-      // Refresh anyway to sync state
+      await unblockDomainOnStudent(studentId, domain, 'Unblocked by admin');
+      alert(`✅ Unblocked: ${domain} on ${studentId}`);
       fetchData();
+    } catch (error) {
+      alert(`❌ Failed to unblock: ${error}`);
+    }
+  };
+
+  const handleBlockAllWebsites = async (studentId, sites) => {
+    try {
+      for (const domain of sites) {
+        await blockDomainOnStudent(studentId, domain, 'Blocked by admin');
+      }
+      alert(`🚫 Blocked all ${sites.length} website(s) on ${studentId}.\nAgent will enforce within seconds.`);
+      fetchData();
+    } catch (error) {
+      alert(`❌ Failed to block all: ${error}`);
     }
   };
 
@@ -127,8 +131,9 @@ const Students = () => {
 
         {/* Students Table */}
         <StudentsTable 
-          students={students} 
+          students={students}
           onBlockWebsite={handleBlockWebsite}
+          onBlockAll={handleBlockAllWebsites}
           onUnblockWebsite={handleUnblockWebsite}
         />
       </div>

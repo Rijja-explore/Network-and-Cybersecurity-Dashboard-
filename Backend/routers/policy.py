@@ -11,9 +11,25 @@ import os
 
 from config import settings
 from database import db
+from urllib.parse import urlparse
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Session-only blocked domains (cleared every time the backend restarts)
+# ---------------------------------------------------------------------------
+_session_blocked_domains: list = []
+
+
+def _normalize_domain(raw: str) -> str:
+    """Strip protocol/path from a domain entry so it can be stored and looked up consistently."""
+    raw = raw.strip().rstrip('/')
+    if '://' in raw:
+        parsed = urlparse(raw)
+        host = parsed.netloc or parsed.path
+        return host.rstrip('/').lower()
+    return raw.lower()
 
 # Create router
 router = APIRouter(
@@ -25,7 +41,7 @@ router = APIRouter(
     }
 )
 
-# Policy storage file
+# Policy storage file (only persists allowed_domains)
 POLICY_FILE = os.path.join(os.path.dirname(settings.DATABASE_PATH), "policies.json")
 
 
@@ -46,22 +62,25 @@ class PolicyListResponse(BaseModel):
 
 
 def load_policies() -> dict:
-    """Load policies from file."""
+    """Load persistent policies (allowed_domains only) from file.
+    blocked_domains are session-only and come from _session_blocked_domains."""
     if os.path.exists(POLICY_FILE):
         try:
             with open(POLICY_FILE, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                return {"allowed_domains": data.get("allowed_domains", [])}
         except Exception as e:
             logger.error(f"Error loading policies: {e}")
-            return {"allowed_domains": [], "blocked_domains": []}
-    return {"allowed_domains": [], "blocked_domains": []}
+    return {"allowed_domains": []}
 
 
 def save_policies(policies: dict):
-    """Save policies to file."""
+    """Save persistent policies (allowed_domains only) to file."""
     try:
+        # Never persist blocked_domains — they are session-only
+        to_save = {"allowed_domains": policies.get("allowed_domains", [])}
         with open(POLICY_FILE, 'w') as f:
-            json.dump(policies, f, indent=2)
+            json.dump(to_save, f, indent=2)
         logger.info("Policies saved successfully")
     except Exception as e:
         logger.error(f"Error saving policies: {e}")
@@ -86,7 +105,7 @@ async def get_domain_policies() -> PolicyListResponse:
         
         return PolicyListResponse(
             allowed_domains=policies.get("allowed_domains", []),
-            blocked_domains=policies.get("blocked_domains", []),
+            blocked_domains=list(_session_blocked_domains),
             blocked_keywords=settings.BLOCKED_KEYWORDS,
             bandwidth_threshold_mb=settings.BANDWIDTH_THRESHOLD_MB
         )
@@ -115,24 +134,17 @@ async def add_blocked_domain(domain_policy: DomainPolicy):
         dict: Operation result with global command status
     """
     try:
-        policies = load_policies()
+        domain = _normalize_domain(domain_policy.domain)
         
-        if "blocked_domains" not in policies:
-            policies["blocked_domains"] = []
-        
-        domain = domain_policy.domain.lower().strip()
-        
-        if domain in policies["blocked_domains"]:
+        if domain in _session_blocked_domains:
             return {
                 "success": False,
                 "message": f"Domain {domain} is already blocked",
                 "domain": domain
             }
         
-        policies["blocked_domains"].append(domain)
-        save_policies(policies)
-        
-        logger.info(f"Added {domain} to blocked domains list")
+        _session_blocked_domains.append(domain)
+        logger.info(f"Added {domain} to session blocked domains list")
         
         # Create global command for all active students
         command_result = db.create_global_command(
@@ -143,9 +155,9 @@ async def add_blocked_domain(domain_policy: DomainPolicy):
         
         return {
             "success": True,
-            "message": f"Domain {domain} added to block list",
+            "message": f"Domain {domain} added to block list (session only)",
             "domain": domain,
-            "total_blocked": len(policies["blocked_domains"]),
+            "total_blocked": len(_session_blocked_domains),
             "global_command": command_result
         }
         
@@ -179,7 +191,7 @@ async def add_allowed_domain(domain_policy: DomainPolicy):
         if "allowed_domains" not in policies:
             policies["allowed_domains"] = []
         
-        domain = domain_policy.domain.lower().strip()
+        domain = _normalize_domain(domain_policy.domain)
         
         if domain in policies["allowed_domains"]:
             return {
@@ -188,12 +200,12 @@ async def add_allowed_domain(domain_policy: DomainPolicy):
                 "domain": domain
             }
         
-        # Remove from blocked if present
+        # Remove from session blocked list if present
         was_blocked = False
-        if "blocked_domains" in policies and domain in policies["blocked_domains"]:
-            policies["blocked_domains"].remove(domain)
+        if domain in _session_blocked_domains:
+            _session_blocked_domains.remove(domain)
             was_blocked = True
-            logger.info(f"Removed {domain} from blocked list")
+            logger.info(f"Removed {domain} from session blocked list")
         
         policies["allowed_domains"].append(domain)
         save_policies(policies)
@@ -243,16 +255,22 @@ async def remove_domain_policy(domain: str):
     """
     try:
         policies = load_policies()
-        domain = domain.lower().strip()
+        # Normalize: strip protocol so 'https://chatgpt.com' matches stored 'chatgpt.com'
+        domain = _normalize_domain(domain)
         removed_from = []
         
-        if domain in policies.get("allowed_domains", []):
-            policies["allowed_domains"].remove(domain)
+        # Check allowed_domains (file-persisted)
+        allowed = policies.get("allowed_domains", [])
+        allowed_matches = [d for d in allowed if _normalize_domain(d) == domain]
+        for m in allowed_matches:
+            allowed.remove(m)
             removed_from.append("allowed")
-        
+
+        # Check session-blocked list (in-memory)
         was_blocked = False
-        if domain in policies.get("blocked_domains", []):
-            policies["blocked_domains"].remove(domain)
+        blocked_matches = [d for d in list(_session_blocked_domains) if _normalize_domain(d) == domain]
+        for m in blocked_matches:
+            _session_blocked_domains.remove(m)
             removed_from.append("blocked")
             was_blocked = True
         
@@ -308,7 +326,7 @@ async def get_policy_summary():
         
         return {
             "allowed_domains_count": len(policies.get("allowed_domains", [])),
-            "blocked_domains_count": len(policies.get("blocked_domains", [])),
+            "blocked_domains_count": len(_session_blocked_domains),
             "blocked_keywords_count": len(settings.BLOCKED_KEYWORDS),
             "bandwidth_threshold_mb": settings.BANDWIDTH_THRESHOLD_MB,
             "policies_active": True

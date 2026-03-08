@@ -1,11 +1,3 @@
 {
-  "allowed_domains": [
-    "https://chatgpt.com"
-  ],
-  "blocked_domains": [
-    "https://chatgpt.com",
-    "https://web.whatsapp.com/",
-    "https://claude.ai/",
-    "https://academicerp.ssn.edu.in/#!/login"
-  ]
+  "allowed_domains": []
 }

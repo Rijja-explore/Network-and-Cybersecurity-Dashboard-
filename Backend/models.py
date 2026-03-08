@@ -79,6 +79,10 @@ class ActivityRequest(BaseModel):
         default=[],
         description="List of network destinations with IP, port, domain"
     )
+    open_tabs: Optional[List[str]] = Field(
+        default=[],
+        description="Currently open browser tab domains (session scan)"
+    )
     timestamp: Optional[str] = Field(
         default=None,
         description="Timestamp from student agent (optional)"

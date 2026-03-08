@@ -176,6 +176,10 @@ class Database:
         if 'agent_timestamp' not in existing_columns:
             print("📦 Migrating database: Adding 'agent_timestamp' column...")
             cursor.execute("ALTER TABLE activities ADD COLUMN agent_timestamp TEXT")
+        
+        if 'open_tabs' not in existing_columns:
+            print("📦 Migrating database: Adding 'open_tabs' column...")
+            cursor.execute("ALTER TABLE activities ADD COLUMN open_tabs TEXT")
     
     def insert_activity(
         self, 
@@ -186,6 +190,7 @@ class Database:
         websites: List[str] = None,
         destinations: List[Dict[str, Any]] = None,
         agent_timestamp: str = None,
+        open_tabs: List[str] = None,
         cpu_percent: float = None,
         memory_percent: float = None,
         disk_percent: float = None,
@@ -217,21 +222,22 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now().isoformat()  # Local system time (IST)
             process_list_json = json.dumps(processes)
             website_list_json = json.dumps(websites or [])
             destinations_json = json.dumps(destinations or [])
+            open_tabs_json    = json.dumps(open_tabs or [])
             
             cursor.execute("""
                 INSERT INTO activities (
                     hostname, bytes_sent, bytes_recv, process_list, website_list, 
-                    destinations, agent_timestamp, cpu_percent, memory_percent, 
+                    destinations, agent_timestamp, open_tabs, cpu_percent, memory_percent, 
                     disk_percent, active_connections, upload_rate_kbps, download_rate_kbps, timestamp
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 hostname, bytes_sent, bytes_recv, process_list_json, website_list_json, 
-                destinations_json, agent_timestamp, cpu_percent, memory_percent, 
+                destinations_json, agent_timestamp, open_tabs_json, cpu_percent, memory_percent, 
                 disk_percent, active_connections, upload_rate_kbps, download_rate_kbps, timestamp
             ))
             
@@ -259,7 +265,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now().isoformat()  # Local system time
             
             cursor.execute("""
                 INSERT INTO alerts (hostname, reason, severity, activity_id, timestamp)
@@ -320,7 +326,7 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            resolved_at = datetime.utcnow().isoformat()
+            resolved_at = datetime.now().isoformat()  # Local system time
             
             cursor.execute("""
                 UPDATE alerts
