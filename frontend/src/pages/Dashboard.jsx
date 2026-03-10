@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import StatCard from '../components/StatCard';
+import BlockedSitesNotification from '../components/BlockedSitesNotification';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
 import { getWeeklyStats, getActiveAlerts, fetchLogs, addBlockedDomain, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
@@ -179,6 +180,9 @@ const Dashboard = () => {
   return (
     <div className="flex-1 ml-64 bg-cyber-dark min-h-screen">
       <Navbar title="Dashboard" />
+      
+      {/* One-time blocked sites notification for clients */}
+      <BlockedSitesNotification />
 
       <div className="p-8">
         {/* Header with Timer */}

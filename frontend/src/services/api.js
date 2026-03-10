@@ -500,6 +500,38 @@ export const reportsAPI = {
   }
 };
 
+// Schedule API endpoints
+export const scheduleAPI = {
+  // Get all scheduled blocks
+  getAllBlocks: (activeOnly = false, website = null) => {
+    const params = new URLSearchParams();
+    if (activeOnly) params.append('active_only', 'true');
+    if (website) params.append('website', website);
+    return api.get(`/api/schedule/blocks?${params.toString()}`);
+  },
+
+  // Get currently active blocks
+  getActiveBlocks: () => api.get('/api/schedule/blocks/active-now'),
+
+  // Get specific block by ID
+  getBlock: (blockId) => api.get(`/api/schedule/blocks/${blockId}`),
+
+  // Create new scheduled block
+  createBlock: (blockData) => api.post('/api/schedule/blocks', blockData),
+
+  // Update scheduled block
+  updateBlock: (blockId, blockData) => api.put(`/api/schedule/blocks/${blockId}`, blockData),
+
+  // Delete scheduled block
+  deleteBlock: (blockId) => api.delete(`/api/schedule/blocks/${blockId}`),
+
+  // Toggle block active status
+  toggleBlock: (blockId) => api.post(`/api/schedule/blocks/${blockId}/toggle`),
+
+  // Health check
+  healthCheck: () => api.get('/api/schedule/health')
+};
+
 // Legacy compatibility functions
 export const getNetworkHealth = getWeeklyStats;
 export const blockStudent = blockIP;

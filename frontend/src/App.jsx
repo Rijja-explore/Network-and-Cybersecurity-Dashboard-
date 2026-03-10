@@ -7,7 +7,9 @@ import Alerts from './pages/Alerts';
 import Students from './pages/Students';
 import Reports from './pages/Reports';
 import Analytics from './pages/Analytics';
+import Schedule from './pages/Schedule';
 import Sidebar from './components/Sidebar';
+import BlockedSitesNotification from './components/BlockedSitesNotification';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -89,6 +91,16 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <Analytics />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/schedule"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Schedule />
               </DashboardLayout>
             </ProtectedRoute>
           }

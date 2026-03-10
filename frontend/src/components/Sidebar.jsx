@@ -8,6 +8,7 @@ import {
   Users, 
   FileText,
   BarChart3,
+  Clock,
   Shield,
   LogOut
 } from 'lucide-react';
@@ -19,6 +20,7 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/network-health', icon: Activity, label: 'Network Health' },
+    { path: '/schedule', icon: Clock, label: 'Schedule' },
     { path: '/alerts', icon: AlertTriangle, label: 'Security Alerts' },
     { path: '/students', icon: Users, label: 'Endpoints' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
