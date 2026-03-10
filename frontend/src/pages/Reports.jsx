@@ -1,39 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import { generateReport } from '../services/api';
+import WeeklyReportTable from '../components/WeeklyReportTable';
+import { reportsAPI } from '../services/api';
+import { RefreshCw, Download, FileText, AlertCircle } from 'lucide-react';
 
 const Reports = () => {
-  const [generating, setGenerating] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const handleGenerateReport = async () => {
+  // Fetch report data
+  const fetchReportData = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setGenerating(true);
-      const blob = await generateReport();
-      
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `SOC_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      
-      alert('Report generated and downloaded successfully!');
-    } catch (error) {
-      console.error('Failed to generate report:', error);
-      alert('Failed to generate report. Please try again.');
+      const response = await reportsAPI.getWeeklyReport();
+      if (response.data.success) {
+        setReportData(response.data.data);
+        setLastUpdated(new Date());
+      } else {
+        throw new Error('Failed to fetch report data');
+      }
+    } catch (err) {
+      console.error('Error fetching report:', err);
+      setError(err.message || 'Failed to load report data');
     } finally {
-      setGenerating(false);
+      setLoading(false);
     }
   };
 
-  const currentDate = new Date();
-  const weekStart = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
-  const weekEnd = new Date(currentDate.setDate(currentDate.getDate() + 6));
+  // Handle CSV download
+  const handleDownloadCSV = async () => {
+    setDownloading(true);
+    try {
+      await reportsAPI.downloadWeeklyCSV();
+    } catch (err) {
+      console.error('Error downloading CSV:', err);
+      alert('Failed to download CSV. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Handle PDF download (placeholder)
+  const handleDownloadPDF = () => {
+    alert('PDF export is coming soon! For now, please use CSV export.');
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchReportData();
+  }, []);
 
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -41,94 +68,160 @@ const Reports = () => {
       <Navbar title="Reports" />
 
       <div className="p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-soc-text mb-2">Weekly Security Reports</h3>
-          <p className="text-sm text-gray-400">
-            Generate comprehensive reports for network monitoring and security analysis
-          </p>
+        {/* Header with Actions */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-soc-text mb-2">Weekly Security Reports</h3>
+            <p className="text-sm text-gray-400">
+              Comprehensive reports for network monitoring and security analysis
+            </p>
+            {lastUpdated && (
+              <p className="text-xs text-gray-500 mt-1">
+                Last updated: {formatDate(lastUpdated)} at {formatTime(lastUpdated)}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={fetchReportData}
+              disabled={loading}
+              className="px-4 py-2 bg-cyber-card hover:bg-gray-700 border border-cyber-border text-soc-text rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>{loading ? 'Loading...' : 'Refresh'}</span>
+            </button>
+            <button
+              onClick={handleDownloadCSV}
+              disabled={loading || downloading || !reportData}
+              className="px-4 py-2 bg-neon-blue hover:bg-blue-500 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>{downloading ? 'Downloading...' : 'Download CSV'}</span>
+            </button>
+          </div>
         </div>
 
-        {/* Report Generator Card */}
-        <div className="bg-soc-card border border-gray-700 rounded-xl p-8 mb-8 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h4 className="text-2xl font-bold text-soc-text mb-2">Weekly Summary Report</h4>
-              <p className="text-gray-400 mb-4">
-                Period: {formatDate(weekStart)} - {formatDate(weekEnd)}
-              </p>
-              <div className="space-y-2 text-sm text-gray-400">
-                <p>✓ Network health metrics</p>
-                <p>✓ Security alerts summary</p>
-                <p>✓ Bandwidth usage analysis</p>
-                <p>✓ Endpoint activity logs</p>
-                <p>✓ Blocked connections report</p>
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 bg-red-900/20 border border-red-500/30 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-red-400">Error Loading Report</h3>
+                <p className="text-sm text-red-300 mt-1">{error}</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Make sure the backend is running on port 8000
+                </p>
               </div>
             </div>
-            <div>
-              <button
-                onClick={handleGenerateReport}
-                disabled={generating}
-                className="px-8 py-4 bg-soc-accent hover:bg-blue-500 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3"
-              >
-                <span className="text-2xl">📊</span>
-                <span>{generating ? 'Generating...' : 'Generate Report'}</span>
-              </button>
+          </div>
+        )}
+
+        {/* Report Period Card */}
+        {reportData && reportData.report_period && (
+          <div className="bg-cyber-card border border-cyber-border rounded-xl p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <FileText className="w-6 h-6 text-neon-blue" />
+                  <h4 className="text-2xl font-bold text-soc-text">Weekly Report</h4>
+                </div>
+                <p className="text-gray-400 mb-4">
+                  Period: {reportData.report_period.start_date} to {reportData.report_period.end_date}
+                </p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400">Health Status</p>
+                    <p className={`text-lg font-bold ${
+                      reportData.executive_summary?.health_status === 'healthy' 
+                        ? 'text-green-400' 
+                        : reportData.executive_summary?.health_status === 'warning'
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
+                    }`}>
+                      {reportData.executive_summary?.health_status || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Risk Level</p>
+                    <p className={`text-lg font-bold ${
+                      reportData.executive_summary?.risk_level === 'low' 
+                        ? 'text-green-400' 
+                        : reportData.executive_summary?.risk_level === 'medium'
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
+                    }`}>
+                      {reportData.executive_summary?.risk_level || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={handleDownloadCSV}
+                  disabled={downloading}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 flex items-center space-x-2"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>CSV Export</span>
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  className="px-6 py-3 bg-gray-600 text-white rounded-lg font-medium opacity-60 cursor-not-allowed flex items-center space-x-2"
+                >
+                  <FileText className="w-5 h-5" />
+                  <span>PDF (Soon)</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Report Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-soc-card border border-gray-700 rounded-xl p-6">
-            <p className="text-gray-400 mb-2">Reports Generated This Month</p>
-            <p className="text-3xl font-bold text-soc-text">4</p>
+        {reportData && reportData.executive_summary && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-cyber-card border border-cyber-border rounded-xl p-6">
+              <p className="text-gray-400 mb-2 text-sm">Total Alerts</p>
+              <p className="text-3xl font-bold text-red-400">
+                {reportData.executive_summary.total_alerts || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {reportData.executive_summary.critical_alerts || 0} critical
+              </p>
+            </div>
+            <div className="bg-cyber-card border border-cyber-border rounded-xl p-6">
+              <p className="text-gray-400 mb-2 text-sm">Active Students</p>
+              <p className="text-3xl font-bold text-neon-blue">
+                {reportData.executive_summary.active_students || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">monitored users</p>
+            </div>
+            <div className="bg-cyber-card border border-cyber-border rounded-xl p-6">
+              <p className="text-gray-400 mb-2 text-sm">Total Bandwidth</p>
+              <p className="text-3xl font-bold text-neon-cyan">
+                {reportData.executive_summary.total_bandwidth_gb 
+                  ? `${reportData.executive_summary.total_bandwidth_gb.toFixed(2)} GB`
+                  : '0 GB'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">this week</p>
+            </div>
+            <div className="bg-cyber-card border border-cyber-border rounded-xl p-6">
+              <p className="text-gray-400 mb-2 text-sm">Blocked Connections</p>
+              <p className="text-3xl font-bold text-neon-purple">
+                {reportData.executive_summary.blocked_connections || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">security blocks</p>
+            </div>
           </div>
-          <div className="bg-soc-card border border-gray-700 rounded-xl p-6">
-            <p className="text-gray-400 mb-2">Last Report Generated</p>
-            <p className="text-3xl font-bold text-soc-accent">
-              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </p>
-          </div>
-          <div className="bg-soc-card border border-gray-700 rounded-xl p-6">
-            <p className="text-gray-400 mb-2">Report Format</p>
-            <p className="text-3xl font-bold text-soc-success">PDF</p>
-          </div>
-        </div>
+        )}
 
-        {/* Report History */}
-        <div className="bg-soc-card border border-gray-700 rounded-xl p-6">
-          <h4 className="text-xl font-bold text-soc-text mb-4">Recent Reports</h4>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((item, index) => {
-              const reportDate = new Date();
-              reportDate.setDate(reportDate.getDate() - (index * 7));
-              return (
-                <div
-                  key={item}
-                  className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-soc-accent/20 rounded-lg flex items-center justify-center text-2xl">
-                      📄
-                    </div>
-                    <div>
-                      <p className="text-soc-text font-medium">
-                        Weekly Report - Week {index + 1}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Generated on {formatDate(reportDate)}
-                      </p>
-                    </div>
-                  </div>
-                  <button className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200 font-medium">
-                    Download
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Weekly Report Table */}
+        <WeeklyReportTable
+          reportData={reportData}
+          loading={loading}
+          onDownloadCSV={handleDownloadCSV}
+          onDownloadPDF={handleDownloadPDF}
+        />
       </div>
     </div>
   );

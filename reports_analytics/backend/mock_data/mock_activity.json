@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026-02-11T09:15:23",
+    "student_id": "STU001",
+    "bandwidth_used": 256.5,
+    "running_applications": ["Chrome", "VS Code", "Spotify"],
+    "ip_address": "192.168.1.101"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026-02-11T09:20:45",
+    "student_id": "STU002",
+    "bandwidth_used": 512.3,
+    "running_applications": ["Firefox", "Discord", "Steam"],
+    "ip_address": "192.168.1.102"
+  },
+  {
+    "id": 3,
+    "timestamp": "2026-02-11T09:25:10",
+    "student_id": "STU003",
+    "bandwidth_used": 128.7,
+    "running_applications": ["Chrome", "Word", "Teams"],
+    "ip_address": "192.168.1.103"
+  },
+  {
+    "id": 4,
+    "timestamp": "2026-02-11T09:30:00",
+    "student_id": "STU001",
+    "bandwidth_used": 320.1,
+    "running_applications": ["Chrome", "VS Code", "Node.js"],
+    "ip_address": "192.168.1.101"
+  },
+  {
+    "id": 5,
+    "timestamp": "2026-02-11T09:35:22",
+    "student_id": "STU004",
+    "bandwidth_used": 1024.8,
+    "running_applications": ["Chrome", "Zoom", "OBS Studio"],
+    "ip_address": "192.168.1.104"
+  },
+  {
+    "id": 6,
+    "timestamp": "2026-02-11T09:40:15",
+    "student_id": "STU005",
+    "bandwidth_used": 89.2,
+    "running_applications": ["Edge", "Excel", "PowerPoint"],
+    "ip_address": "192.168.1.105"
+  },
+  {
+    "id": 7,
+    "timestamp": "2026-02-11T09:45:33",
+    "student_id": "STU002",
+    "bandwidth_used": 756.9,
+    "running_applications": ["Firefox", "Blender", "Photoshop"],
+    "ip_address": "192.168.1.102"
+  },
+  {
+    "id": 8,
+    "timestamp": "2026-02-11T10:00:00",
+    "student_id": "STU006",
+    "bandwidth_used": 445.6,
+    "running_applications": ["Chrome", "IntelliJ", "Docker"],
+    "ip_address": "192.168.1.106"
+  },
+  {
+    "id": 9,
+    "timestamp": "2026-02-11T10:15:45",
+    "student_id": "STU003",
+    "bandwidth_used": 234.1,
+    "running_applications": ["Chrome", "Slack", "VS Code"],
+    "ip_address": "192.168.1.103"
+  },
+  {
+    "id": 10,
+    "timestamp": "2026-02-11T10:30:20",
+    "student_id": "STU007",
+    "bandwidth_used": 678.4,
+    "running_applications": ["Safari", "Xcode", "Terminal"],
+    "ip_address": "192.168.1.107"
+  },
+  {
+    "id": 11,
+    "timestamp": "2026-02-10T14:20:00",
+    "student_id": "STU001",
+    "bandwidth_used": 345.2,
+    "running_applications": ["Chrome", "VS Code"],
+    "ip_address": "192.168.1.101"
+  },
+  {
+    "id": 12,
+    "timestamp": "2026-02-10T15:30:00",
+    "student_id": "STU002",
+    "bandwidth_used": 890.5,
+    "running_applications": ["Firefox", "Steam", "Discord"],
+    "ip_address": "192.168.1.102"
+  },
+  {
+    "id": 13,
+    "timestamp": "2026-02-09T10:00:00",
+    "student_id": "STU004",
+    "bandwidth_used": 567.8,
+    "running_applications": ["Chrome", "Zoom"],
+    "ip_address": "192.168.1.104"
+  },
+  {
+    "id": 14,
+    "timestamp": "2026-02-08T11:45:00",
+    "student_id": "STU005",
+    "bandwidth_used": 123.4,
+    "running_applications": ["Edge", "Word"],
+    "ip_address": "192.168.1.105"
+  },
+  {
+    "id": 15,
+    "timestamp": "2026-02-07T09:00:00",
+    "student_id": "STU006",
+    "bandwidth_used": 789.1,
+    "running_applications": ["Chrome", "Docker", "Postman"],
+    "ip_address": "192.168.1.106"
+  }
+]

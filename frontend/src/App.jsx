@@ -6,6 +6,7 @@ import NetworkHealth from './pages/NetworkHealth';
 import Alerts from './pages/Alerts';
 import Students from './pages/Students';
 import Reports from './pages/Reports';
+import Analytics from './pages/Analytics';
 import Sidebar from './components/Sidebar';
 
 // Protected Route Component
@@ -78,6 +79,16 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <Reports />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Analytics />
               </DashboardLayout>
             </ProtectedRoute>
           }

@@ -7,6 +7,7 @@ import {
   AlertTriangle, 
   Users, 
   FileText,
+  BarChart3,
   Shield,
   LogOut
 } from 'lucide-react';
@@ -20,6 +21,7 @@ const Sidebar = () => {
     { path: '/network-health', icon: Activity, label: 'Network Health' },
     { path: '/alerts', icon: AlertTriangle, label: 'Security Alerts' },
     { path: '/students', icon: Users, label: 'Endpoints' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/reports', icon: FileText, label: 'Reports' },
   ];
 

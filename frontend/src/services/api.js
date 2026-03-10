@@ -470,6 +470,36 @@ export const getPolicySummary = async () => {
   }
 };
 
+// Analytics API endpoints
+export const analyticsAPI = {
+  getSummary: () => api.get('/api/analytics/summary'),
+  getNetworkCharts: () => api.get('/api/analytics/charts/network'),
+  getAlertsCharts: () => api.get('/api/analytics/charts/alerts'),
+};
+
+// Reports API endpoints
+export const reportsAPI = {
+  getWeeklyReport: () => api.get('/api/analytics/reports/weekly'),
+  downloadWeeklyCSV: async () => {
+    try {
+      const response = await api.get('/api/analytics/reports/weekly/csv', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `weekly_report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+      throw error;
+    }
+  }
+};
+
 // Legacy compatibility functions
 export const getNetworkHealth = getWeeklyStats;
 export const blockStudent = blockIP;
