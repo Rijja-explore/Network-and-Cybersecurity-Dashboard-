@@ -127,6 +127,32 @@ class Database:
                 ON commands(student_id, status)
             """)
             
+            # Create scheduled_blocks table for time-based website blocking
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scheduled_blocks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    website TEXT NOT NULL,
+                    start_time TEXT NOT NULL,
+                    end_time TEXT NOT NULL,
+                    days_of_week TEXT NOT NULL,
+                    reason TEXT,
+                    created_by TEXT NOT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scheduled_blocks_active 
+                ON scheduled_blocks(is_active)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scheduled_blocks_website 
+                ON scheduled_blocks(website)
+            """)
+            
             conn.commit()
     
     def _migrate_activities_table(self, cursor):
