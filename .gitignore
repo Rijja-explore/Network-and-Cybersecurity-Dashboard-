@@ -1,70 +1,245 @@
-.# Top-level gitignore for the project
-# See also Backend/.gitignore and frontend/.gitignore for folder-specific rules
+# ============================================================================
+# PYTHON - Backend Dependencies & Virtual Environments
+# ============================================================================
 
-# Node
-node_modules/
-frontend/node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-lock.yaml
-package-lock.json
+# Virtual environment directories
+venv/
+env/
+ENV/
+.venv/
+.ENV/
 
-# Build outputs
-/build/
-/dist/
-frontend/dist/
-frontend/build/
-.vite/
-
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 .Python
-env/
-venv/
-ENV/
-.venv/
 
-# Virtual environment directories
-venv/
-ENV/
-env/
+# Python egg info
+*.egg-info/
+dist/
+build/
+*.egg
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Databases
-*.db
-*.sqlite
-*.sqlite3
-monitoring.db
-
-# Logs
-*.log
-logs/
-
-# Editors and IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Testing
+# pytest and testing
 .pytest_cache/
 .coverage
 htmlcov/
 coverage/
 .tox/
 
-# Misc
-/.pnp
-.pnp.js
+# mypy and type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================================================
+# NODE - Frontend Dependencies & Build Artifacts
+# ============================================================================
+
+# Node module directories
+node_modules/
+frontend/node_modules/
+reports_analytics/frontend/node_modules/
+
+# npm lock files (use package-lock.json in repo)
+package-lock.json
+yarn-lock.yaml
+pnpm-lock.yaml
+
+# npm debug logs
+npm-debug.log*
+npm-error.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+pnpm-error.log*
+
+# ============================================================================
+# BUILD OUTPUTS
+# ============================================================================
+
+# Vite build output
+/dist/
+/build/
+frontend/dist/
+frontend/build/
+reports_analytics/frontend/dist/
+.vite/
+
+# Development server
+.vite/
+
+# ============================================================================
+# ENVIRONMENT & CONFIGURATION
+# ============================================================================
+
+# Environment files (secrets, local config)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ============================================================================
+# DATABASE FILES
+# ============================================================================
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+monitoring.db
+*.db-journal
+
+# ============================================================================
+# LOG FILES & ARTIFACTS
+# ============================================================================
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ============================================================================
+# EDITOR & IDE CONFIGURATION
+# ============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# JetBrains IDEs
+.idea/
+.idea_modules/
+*.iml
+*.iws
+*.ipr
+
+# VIM
+*.swp
+*.swo
+*~
+.swp
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Nano
+.nano_history
+
+# ============================================================================
+# OS FILES
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+
+# ============================================================================
+# PROJECT-SPECIFIC IGNORES
+# ============================================================================
+
+# Static files
+staticfiles/
+static/collected/
+
+# Media uploads
+media/
+uploads/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS-specific files
+.localized
+
+# IDE-generated files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================================================================
+# OPERATING SYSTEM
+# ============================================================================
+
+# macOS
+*.pbxproj
+*.pbxuser
+*.perspective
+*.perspectivev3
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# Windows executables
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+
+# Directories that should never be committed
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# Optional REPL history
+.python_history
+.node_repl_history
+.ipython/
+.jupyterlab/
+
+# Secure files should never be committed
+private_keys/
+certificates/
+secrets/
+
+# ============================================================================
+# DONT IGNORE - Important files to keep
+# ============================================================================
+
+# Make sure to keep these important files
+!.gitkeep
+!README.md
+!.env.example
+!requirements.txt
+!package.json
+!tsconfig.json

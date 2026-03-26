@@ -1,0 +1,98 @@
+[
+  {
+    "id": 1,
+    "alert_type": "high_bandwidth",
+    "severity": "warning",
+    "timestamp": "2026-02-11T09:22:00",
+    "student_id": "STU002",
+    "description": "Bandwidth usage exceeded 500MB threshold"
+  },
+  {
+    "id": 2,
+    "alert_type": "suspicious_application",
+    "severity": "critical",
+    "timestamp": "2026-02-11T09:25:30",
+    "student_id": "STU002",
+    "description": "Potentially unauthorized application detected: Steam"
+  },
+  {
+    "id": 3,
+    "alert_type": "high_bandwidth",
+    "severity": "critical",
+    "timestamp": "2026-02-11T09:36:00",
+    "student_id": "STU004",
+    "description": "Bandwidth usage exceeded 1GB threshold"
+  },
+  {
+    "id": 4,
+    "alert_type": "unusual_activity",
+    "severity": "warning",
+    "timestamp": "2026-02-11T09:46:00",
+    "student_id": "STU002",
+    "description": "Running resource-intensive applications: Blender, Photoshop"
+  },
+  {
+    "id": 5,
+    "alert_type": "network_anomaly",
+    "severity": "info",
+    "timestamp": "2026-02-11T10:05:00",
+    "student_id": "STU006",
+    "description": "Docker container network traffic detected"
+  },
+  {
+    "id": 6,
+    "alert_type": "high_bandwidth",
+    "severity": "warning",
+    "timestamp": "2026-02-11T10:32:00",
+    "student_id": "STU007",
+    "description": "Bandwidth usage exceeded 500MB threshold"
+  },
+  {
+    "id": 7,
+    "alert_type": "unauthorized_access",
+    "severity": "critical",
+    "timestamp": "2026-02-10T14:45:00",
+    "student_id": "STU008",
+    "description": "Multiple failed login attempts detected"
+  },
+  {
+    "id": 8,
+    "alert_type": "suspicious_application",
+    "severity": "warning",
+    "timestamp": "2026-02-10T15:35:00",
+    "student_id": "STU002",
+    "description": "P2P application detected: Steam downloading"
+  },
+  {
+    "id": 9,
+    "alert_type": "system_health",
+    "severity": "info",
+    "timestamp": "2026-02-09T09:00:00",
+    "student_id": "STU001",
+    "description": "System resources running low - 90% CPU usage"
+  },
+  {
+    "id": 10,
+    "alert_type": "network_anomaly",
+    "severity": "warning",
+    "timestamp": "2026-02-08T16:20:00",
+    "student_id": "STU005",
+    "description": "Unusual outbound connection to external IP"
+  },
+  {
+    "id": 11,
+    "alert_type": "high_bandwidth",
+    "severity": "warning",
+    "timestamp": "2026-02-07T10:15:00",
+    "student_id": "STU006",
+    "description": "Large file download detected - 2GB transfer"
+  },
+  {
+    "id": 12,
+    "alert_type": "policy_violation",
+    "severity": "critical",
+    "timestamp": "2026-02-06T13:30:00",
+    "student_id": "STU003",
+    "description": "Attempted access to blocked website category"
+  }
+]

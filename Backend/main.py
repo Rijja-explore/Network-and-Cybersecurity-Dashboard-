@@ -22,6 +22,8 @@ from routers.firewall import router as firewall_router
 from routers.auth import router as auth_router
 from routers.policy import router as policy_router
 from routers.commands import router as commands_router
+from routers.reports_analytics import router as reports_analytics_router
+from routers.schedule import router as schedule_router
 
 # Configure logging
 logging.basicConfig(
@@ -441,6 +443,8 @@ app.include_router(stats.router)
 app.include_router(firewall_router)
 app.include_router(policy_router)
 app.include_router(commands_router)
+app.include_router(reports_analytics_router)
+app.include_router(schedule_router)
 
 
 @app.post(

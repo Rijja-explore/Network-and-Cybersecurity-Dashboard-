@@ -306,15 +306,34 @@ export const blockDomain = async (domain, reason = 'Unauthorized access') => {
  * @returns {Promise} - API response
  */
 export const blockDomainOnStudent = async (studentId, domain, reason = 'Admin policy violation') => {
+  return setDomainBlockOnStudent(studentId, domain, true, reason);
+};
+
+/**
+ * Set block/unblock state for a domain on a specific student's machine.
+ * This is the single command path used by Dashboard, Students, and Network Health actions.
+ * @param {string} studentId - Student hostname
+ * @param {string} domain - Domain to block/unblock
+ * @param {boolean} shouldBlock - true to block, false to unblock
+ * @param {string} reason - Reason for the command
+ * @returns {Promise} - API response
+ */
+export const setDomainBlockOnStudent = async (
+  studentId,
+  domain,
+  shouldBlock = true,
+  reason = 'Admin policy command'
+) => {
   try {
-    const response = await api.post('/admin/block-domain', {
+    const endpoint = shouldBlock ? '/admin/block-domain' : '/admin/unblock-domain';
+    const response = await api.post(endpoint, {
       student_id: studentId,
       domain: domain,
       reason: reason
     });
     return response.data;
   } catch (error) {
-    throw error.response?.data?.detail || 'Failed to block domain on student machine';
+    throw error.response?.data?.detail || `Failed to ${shouldBlock ? 'block' : 'unblock'} domain on student machine`;
   }
 };
 
@@ -326,16 +345,7 @@ export const blockDomainOnStudent = async (studentId, domain, reason = 'Admin po
  * @returns {Promise} - API response
  */
 export const unblockDomainOnStudent = async (studentId, domain, reason = 'Admin unblock request') => {
-  try {
-    const response = await api.post('/admin/unblock-domain', {
-      student_id: studentId,
-      domain: domain,
-      reason: reason
-    });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data?.detail || 'Failed to unblock domain on student machine';
-  }
+  return setDomainBlockOnStudent(studentId, domain, false, reason);
 };
 
 /**
@@ -468,6 +478,71 @@ export const getPolicySummary = async () => {
     console.error('API Error:', error);
     return null;
   }
+};
+
+// Analytics API endpoints
+export const analyticsAPI = {
+  getSummary: () => api.get('/api/analytics/summary'),
+  getNetworkCharts: () => api.get('/api/analytics/charts/network'),
+  getAlertsCharts: () => api.get('/api/analytics/charts/alerts'),
+};
+
+// Reports API endpoints
+export const reportsAPI = {
+  getWeeklyReport: () => api.get('/api/analytics/reports/weekly'),
+  downloadWeeklyCSV: async () => {
+    try {
+      const response = await api.get('/api/analytics/reports/weekly/csv', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `weekly_report_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+      throw error;
+    }
+  }
+};
+
+// Schedule API endpoints
+export const scheduleAPI = {
+  // Get all scheduled blocks
+  getAllBlocks: (activeOnly = false, website = null) => {
+    const params = new URLSearchParams();
+    if (activeOnly) params.append('active_only', 'true');
+    if (website) params.append('website', website);
+    return api.get(`/api/schedule/blocks?${params.toString()}`);
+  },
+
+  // Get currently active blocks
+  getActiveBlocks: () => api.get('/api/schedule/blocks/active-now'),
+
+  // Get specific block by ID
+  getBlock: (blockId) => api.get(`/api/schedule/blocks/${blockId}`),
+
+  // Create new scheduled block
+  createBlock: (blockData) => api.post('/api/schedule/blocks', blockData),
+
+  // Update scheduled block
+  updateBlock: (blockId, blockData) => api.put(`/api/schedule/blocks/${blockId}`, blockData),
+
+  // Delete scheduled block
+  deleteBlock: (blockId) => api.delete(`/api/schedule/blocks/${blockId}`),
+
+  // Toggle block active status
+  toggleBlock: (blockId) => api.post(`/api/schedule/blocks/${blockId}/toggle`),
+
+  // Get latest student schedule enforcement statuses
+  getEnforcementStatus: (limit = 100) => api.get(`/api/schedule/status?limit=${limit}`),
+
+  // Health check
+  healthCheck: () => api.get('/api/schedule/health')
 };
 
 // Legacy compatibility functions

@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import Navbar from '../components/Navbar';
 import StatCard from '../components/StatCard';
+import BlockedSitesNotification from '../components/BlockedSitesNotification';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getWeeklyStats, getActiveAlerts, fetchLogs, addBlockedDomain, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
+import { getWeeklyStats, getActiveAlerts, fetchLogs, scheduleAPI, addBlockedDomain, setDomainBlockOnStudent } from '../services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Activity, Server, AlertTriangle, TrendingUp, Wifi, X, Shield, Lock, Unlock } from 'lucide-react';
+import { Activity, Server, AlertTriangle, TrendingUp, Wifi, X, Shield, Lock, Unlock, Download, FileText } from 'lucide-react';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [scheduleStatus, setScheduleStatus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState(30);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -19,19 +23,40 @@ const Dashboard = () => {
   const [showDestinationsModal, setShowDestinationsModal] = useState(false);
   const [blockingDomain, setBlockingDomain] = useState(null);
   const [blockedDomains, setBlockedDomains] = useState(new Set());
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const escapeCsv = (value) => {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const downloadBlob = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [weeklyData, alertsData, logsData] = await Promise.all([
+      const [weeklyData, alertsData, logsData, scheduleStatusResponse] = await Promise.all([
         getWeeklyStats(),
         getActiveAlerts(),
         fetchLogs(),
+        scheduleAPI.getEnforcementStatus(50),
       ]);
 
       setStats(weeklyData);
       setAlerts(alertsData);
       setLogs(logsData);
+      setScheduleStatus(scheduleStatusResponse?.data?.data || []);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -64,6 +89,225 @@ const Dashboard = () => {
     fetchData();
   };
 
+  const handleDownloadCSV = () => {
+    if (!stats) {
+      alert('No dashboard data available to export.');
+      return;
+    }
+
+    setExportingCsv(true);
+    try {
+      const rows = [];
+      rows.push('Section,Field,Value');
+      rows.push([escapeCsv('Dashboard'), escapeCsv('Generated At'), escapeCsv(new Date().toLocaleString())].join(','));
+      rows.push([escapeCsv('Dashboard'), escapeCsv('Active Endpoints'), escapeCsv(stats?.active_students || 0)].join(','));
+      rows.push([escapeCsv('Dashboard'), escapeCsv('Security Alerts'), escapeCsv(stats?.alert_count || 0)].join(','));
+      rows.push([escapeCsv('Dashboard'), escapeCsv('Total Bandwidth (GB)'), escapeCsv((stats?.total_bandwidth_gb || 0).toFixed(2))].join(','));
+      rows.push([escapeCsv('Dashboard'), escapeCsv('Network Status'), escapeCsv((stats?.alert_count || 0) > 5 ? 'Warning' : 'Healthy')].join(','));
+
+      rows.push('');
+      rows.push('Top Bandwidth Consumers');
+      rows.push('Hostname,Total Bandwidth (MB)');
+      bandwidthData.forEach((item) => {
+        rows.push([escapeCsv(item.name), escapeCsv(item.bandwidth)].join(','));
+      });
+
+      rows.push('');
+      rows.push('Alert Distribution');
+      rows.push('Severity,Count');
+      severityData.forEach((item) => {
+        rows.push([escapeCsv(item.name), escapeCsv(item.value)].join(','));
+      });
+
+      rows.push('');
+      rows.push('Recent Security Alerts');
+      rows.push('Host,Severity,Reason,Timestamp');
+      alerts.slice(0, 25).forEach((alert) => {
+        rows.push([
+          escapeCsv(alert.hostname || 'N/A'),
+          escapeCsv(alert.severity || 'N/A'),
+          escapeCsv(alert.reason || 'N/A'),
+          escapeCsv(new Date(alert.timestamp).toLocaleString()),
+        ].join(','));
+      });
+
+      rows.push('');
+      rows.push('Schedule Enforcement Status');
+      rows.push('Student ID,Status,Active Domains,Applied Domains,Updated At');
+      scheduleStatus.forEach((item) => {
+        rows.push([
+          escapeCsv(item.student_id || 'N/A'),
+          escapeCsv(item.status || 'unknown'),
+          escapeCsv((item.active_domains || []).join('; ')),
+          escapeCsv((item.applied_domains || []).join('; ')),
+          escapeCsv(item.updated_at || 'N/A'),
+        ].join(','));
+      });
+
+      rows.push('');
+      rows.push('Live Student Activity');
+      rows.push('Student ID,Hostname,CPU %,Memory %,Disk %,Connections,Network MB,Timestamp');
+      logs.slice(0, 100).forEach((log) => {
+        rows.push([
+          escapeCsv(log.student_id || 'N/A'),
+          escapeCsv(log.hostname || 'N/A'),
+          escapeCsv(log.cpu || 0),
+          escapeCsv(log.memory || 0),
+          escapeCsv(log.disk || 0),
+          escapeCsv(log.connections || 0),
+          escapeCsv(log.network_mb || ((log.network || 0) / 1024 / 1024).toFixed(2)),
+          escapeCsv(new Date(log.timestamp).toLocaleString()),
+        ].join(','));
+      });
+
+      downloadBlob(
+        `dashboard_report_${Date.now()}.csv`,
+        rows.join('\n'),
+        'text/csv;charset=utf-8;'
+      );
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      alert('Failed to generate CSV. Please try again.');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!stats) {
+      alert('No dashboard data available to export.');
+      return;
+    }
+
+    setExportingPdf(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const left = 14;
+      const right = pageWidth - 14;
+      let y = 16;
+
+      const addPageIfNeeded = (needed = 8) => {
+        if (y + needed > pageHeight - 12) {
+          pdf.addPage();
+          y = 16;
+        }
+      };
+
+      pdf.setFillColor(10, 25, 47);
+      pdf.rect(0, 0, pageWidth, 24, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(16);
+      pdf.text('CyberSOC Dashboard Report', left, 14);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, left, 20);
+      y = 30;
+
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(13);
+      pdf.text('Summary', left, y);
+      y += 6;
+
+      const summaryRows = [
+        ['Active Endpoints', String(stats?.active_students || 0)],
+        ['Security Alerts', String(stats?.alert_count || 0)],
+        ['Total Bandwidth', `${(stats?.total_bandwidth_gb || 0).toFixed(2)} GB`],
+        ['Network Status', (stats?.alert_count || 0) > 5 ? 'Warning' : 'Healthy'],
+      ];
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(11);
+      summaryRows.forEach(([label, value]) => {
+        addPageIfNeeded(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${label}:`, left, y);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(value, left + 45, y);
+        y += 7;
+      });
+
+      y += 2;
+      addPageIfNeeded(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(13);
+      pdf.text('Top Bandwidth Consumers', left, y);
+      y += 7;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      bandwidthData.slice(0, 7).forEach((item, index) => {
+        addPageIfNeeded(6);
+        pdf.text(`${index + 1}. ${item.name}`, left, y);
+        pdf.text(`${item.bandwidth} MB`, right, y, { align: 'right' });
+        y += 6;
+      });
+
+      y += 2;
+      addPageIfNeeded(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(13);
+      pdf.text('Recent Security Alerts', left, y);
+      y += 7;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      alerts.slice(0, 8).forEach((alert, index) => {
+        addPageIfNeeded(12);
+        const line = `${index + 1}. ${alert.hostname || 'N/A'} | ${alert.severity || 'N/A'}`;
+        const reason = `Reason: ${alert.reason || 'N/A'}`;
+        const time = `Time: ${new Date(alert.timestamp).toLocaleString()}`;
+        pdf.text(line, left, y);
+        y += 5;
+        pdf.text(reason, left + 4, y);
+        y += 5;
+        pdf.setTextColor(71, 85, 105);
+        pdf.text(time, left + 4, y);
+        pdf.setTextColor(15, 23, 42);
+        y += 6;
+      });
+
+      const chartsElement = document.getElementById('dashboard-charts-section');
+      if (chartsElement) {
+        const canvas = await html2canvas(chartsElement, {
+          scale: 1.6,
+          useCORS: true,
+          backgroundColor: '#020617',
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const margin = 12;
+        const contentWidth = pageWidth - margin * 2;
+        const contentHeight = (canvas.height * contentWidth) / canvas.width;
+        const printableHeight = pageHeight - 24;
+        let remainingHeight = contentHeight;
+        let offsetY = 12;
+
+        pdf.addPage();
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(13);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text('Dashboard Charts', margin, 10);
+        pdf.addImage(imgData, 'PNG', margin, offsetY + 4, contentWidth, contentHeight);
+        remainingHeight -= printableHeight;
+
+        while (remainingHeight > 0) {
+          pdf.addPage();
+          offsetY = 12 - (contentHeight - remainingHeight);
+          pdf.addImage(imgData, 'PNG', margin, offsetY, contentWidth, contentHeight);
+          remainingHeight -= printableHeight;
+        }
+      }
+
+      pdf.save(`dashboard_report_${Date.now()}.pdf`);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const handleShowDestinations = (log) => {
     setSelectedStudent(log);
     setShowDestinationsModal(true);
@@ -81,7 +325,7 @@ const Dashboard = () => {
       
       if (isCurrentlyBlocked) {
         // Unblock the domain
-        await unblockDomainOnStudent(studentId, domain, 'Unblocked from dashboard');
+        await setDomainBlockOnStudent(studentId, domain, false, 'Unblocked from dashboard');
         setBlockedDomains(prev => {
           const newSet = new Set(prev);
           newSet.delete(domain);
@@ -90,7 +334,7 @@ const Dashboard = () => {
         alert(`✅ Unblock command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will restore access within a few seconds.`);
       } else {
         // Block the domain
-        await blockDomainOnStudent(studentId, domain, 'Blocked from dashboard');
+        await setDomainBlockOnStudent(studentId, domain, true, 'Blocked from dashboard');
         setBlockedDomains(prev => new Set(prev).add(domain));
         alert(`✅ Block command sent!\n\nDomain: ${domain}\nStudent: ${studentId}\n\nThe student agent will enforce this block within a few seconds.`);
       }
@@ -179,13 +423,16 @@ const Dashboard = () => {
   return (
     <div className="flex-1 ml-64 bg-cyber-dark min-h-screen">
       <Navbar title="Dashboard" />
+      
+      {/* One-time blocked sites notification for clients */}
+      <BlockedSitesNotification />
 
       <div className="p-8">
         {/* Header with Timer */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
+          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8"
         >
           <div>
             <h3 className="text-lg font-semibold text-gray-300">System Overview</h3>
@@ -193,7 +440,27 @@ const Dashboard = () => {
               Last updated: {lastUpdated.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </p>
           </div>
-          <RefreshTimer seconds={countdown} onRefresh={handleManualRefresh} />
+          <div className="flex items-center gap-3 flex-wrap">
+            <RefreshTimer seconds={countdown} onRefresh={handleManualRefresh} />
+            <button
+              onClick={handleDownloadCSV}
+              disabled={loading || exportingCsv}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Download dashboard report as CSV"
+            >
+              <Download className="w-4 h-4" />
+              <span>{exportingCsv ? 'Exporting CSV...' : 'Download CSV'}</span>
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={loading || exportingPdf}
+              className="px-4 py-2 bg-neon-blue hover:bg-blue-500 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Download dashboard report as PDF"
+            >
+              <FileText className="w-4 h-4" />
+              <span>{exportingPdf ? 'Exporting PDF...' : 'Download PDF'}</span>
+            </button>
+          </div>
         </motion.div>
 
         {/* KPI Cards */}
@@ -229,7 +496,8 @@ const Dashboard = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div id="dashboard-charts-section" className="space-y-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Real-time CPU Usage Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -373,7 +641,7 @@ const Dashboard = () => {
         </div>
 
         {/* Second Row: Memory, Disk, Connections Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Memory Usage Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -539,6 +807,7 @@ const Dashboard = () => {
             </div>
           </motion.div>
         </div>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 mb-8">
 
@@ -591,6 +860,62 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="bg-cyber-card border border-cyber-border rounded-xl p-6 shadow-neon-blue/20"
+        >
+          <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-neon-blue" />
+            Schedule Enforcement Status
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px]">
+              <thead>
+                <tr className="border-b border-cyber-border text-left">
+                  <th className="py-3 px-2 font-medium text-neon-blue">Student</th>
+                  <th className="py-3 px-2 font-medium text-neon-blue">Status</th>
+                  <th className="py-3 px-2 font-medium text-neon-blue">Active Schedule Domains</th>
+                  <th className="py-3 px-2 font-medium text-neon-blue">Applied Domains</th>
+                  <th className="py-3 px-2 font-medium text-neon-blue">Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scheduleStatus.map((item, index) => (
+                  <motion.tr
+                    key={`${item.student_id}-${index}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 + index * 0.05 }}
+                    className="border-b border-cyber-border/50 hover:bg-cyber-darker/50 transition-colors"
+                  >
+                    <td className="py-3 px-2 text-gray-300 font-medium">{item.student_id}</td>
+                    <td className="py-3 px-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        item.status === 'ok'
+                          ? 'bg-status-success/20 text-status-success'
+                          : 'bg-status-warning/20 text-status-warning'
+                      }`}>
+                        {item.status || 'unknown'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-gray-300">{(item.active_domains || []).join(', ') || 'None'}</td>
+                    <td className="py-3 px-2 text-gray-300">{(item.applied_domains || []).join(', ') || 'None'}</td>
+                    <td className="py-3 px-2 text-gray-400 text-xs">{item.updated_at || 'N/A'}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {scheduleStatus.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <p>No student schedule status reported yet.</p>
+              <p className="text-xs mt-2">Restart student agents after the latest update to start reporting.</p>
+            </div>
+          )}
         </motion.div>
 
         {/* 📊 Live Student Activity Logs (STEP 3) */}

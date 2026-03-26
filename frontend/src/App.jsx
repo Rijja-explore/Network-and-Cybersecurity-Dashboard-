@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard';
 import NetworkHealth from './pages/NetworkHealth';
 import Alerts from './pages/Alerts';
 import Students from './pages/Students';
-import Reports from './pages/Reports';
+import Schedule from './pages/Schedule';
 import Sidebar from './components/Sidebar';
 
 // Protected Route Component
@@ -72,12 +72,13 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
         <Route
-          path="/reports"
+          path="/schedule"
           element={
             <ProtectedRoute>
               <DashboardLayout>
-                <Reports />
+                <Schedule />
               </DashboardLayout>
             </ProtectedRoute>
           }

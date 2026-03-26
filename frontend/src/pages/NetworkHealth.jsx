@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getDomainPolicies, addBlockedDomain, removeDomainPolicy, getPolicySummary, getFirewallRules, fetchLogs, testBlockedProcesses, getStudents, blockDomainOnStudent } from '../services/api';
+import { getDomainPolicies, addBlockedDomain, removeDomainPolicy, getPolicySummary, getFirewallRules, fetchLogs, testBlockedProcesses, getStudents, setDomainBlockOnStudent } from '../services/api';
 import { Lock, Unlock, Plus, AlertTriangle, Shield, Activity, Server, Network, CheckCircle, Play } from 'lucide-react';
 
 const NetworkHealth = () => {
@@ -168,7 +168,7 @@ const NetworkHealth = () => {
         const unique = [...new Set(sitesToBlock)].filter(Boolean);
         try {
           await Promise.all(unique.map(domain =>
-            blockDomainOnStudent(student.hostname, domain, 'Auto-block: policy violation test')
+            setDomainBlockOnStudent(student.hostname, domain, true, 'Auto-block: policy violation test')
           ));
           totalBlocked += unique.length;
           studentResults.push(`${student.hostname}: ${unique.length} sites`);

@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import StudentsTable from '../components/StudentsTable';
 import RefreshTimer from '../components/RefreshTimer';
 import Loader from '../components/Loader';
-import { getStudents, blockDomainOnStudent, unblockDomainOnStudent } from '../services/api';
+import { getStudents, setDomainBlockOnStudent } from '../services/api';
 
 const Students = () => {
   const [students, setStudents] = useState([]);
@@ -50,7 +50,7 @@ const Students = () => {
 
   const handleBlockWebsite = async (studentId, domain) => {
     try {
-      await blockDomainOnStudent(studentId, domain, 'Blocked by admin');
+      await setDomainBlockOnStudent(studentId, domain, true, 'Blocked by admin');
       alert(`✅ Blocked: ${domain} on ${studentId}`);
       fetchData();
     } catch (error) {
@@ -60,7 +60,7 @@ const Students = () => {
 
   const handleUnblockWebsite = async (studentId, domain) => {
     try {
-      await unblockDomainOnStudent(studentId, domain, 'Unblocked by admin');
+      await setDomainBlockOnStudent(studentId, domain, false, 'Unblocked by admin');
       alert(`✅ Unblocked: ${domain} on ${studentId}`);
       fetchData();
     } catch (error) {
@@ -70,9 +70,7 @@ const Students = () => {
 
   const handleBlockAllWebsites = async (studentId, sites) => {
     try {
-      for (const domain of sites) {
-        await blockDomainOnStudent(studentId, domain, 'Blocked by admin');
-      }
+      await Promise.all(sites.map((domain) => setDomainBlockOnStudent(studentId, domain, true, 'Blocked by admin')));
       alert(`🚫 Blocked all ${sites.length} website(s) on ${studentId}.\nAgent will enforce within seconds.`);
       fetchData();
     } catch (error) {

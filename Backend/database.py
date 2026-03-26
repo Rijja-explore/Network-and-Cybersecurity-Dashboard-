@@ -127,6 +127,48 @@ class Database:
                 ON commands(student_id, status)
             """)
             
+            # Create scheduled_blocks table for time-based website blocking
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS scheduled_blocks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    website TEXT NOT NULL,
+                    start_time TEXT NOT NULL,
+                    end_time TEXT NOT NULL,
+                    days_of_week TEXT NOT NULL,
+                    reason TEXT,
+                    created_by TEXT NOT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scheduled_blocks_active 
+                ON scheduled_blocks(is_active)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scheduled_blocks_website 
+                ON scheduled_blocks(website)
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS schedule_enforcement_status (
+                    student_id TEXT PRIMARY KEY,
+                    active_domains TEXT NOT NULL DEFAULT '[]',
+                    applied_domains TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL DEFAULT 'idle',
+                    last_error TEXT,
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_schedule_enforcement_updated_at
+                ON schedule_enforcement_status(updated_at)
+            """)
+            
             conn.commit()
     
     def _migrate_activities_table(self, cursor):
@@ -675,6 +717,65 @@ class Database:
             "action": action,
             "domain": domain
         }
+
+    def upsert_schedule_enforcement_status(
+        self,
+        student_id: str,
+        active_domains: List[str],
+        applied_domains: List[str],
+        status: str = "ok",
+        last_error: Optional[str] = None
+    ) -> None:
+        """Create or update a student's latest schedule enforcement status."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO schedule_enforcement_status (
+                    student_id, active_domains, applied_domains, status, last_error, updated_at
+                ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(student_id) DO UPDATE SET
+                    active_domains = excluded.active_domains,
+                    applied_domains = excluded.applied_domains,
+                    status = excluded.status,
+                    last_error = excluded.last_error,
+                    updated_at = datetime('now')
+                """,
+                (
+                    student_id,
+                    json.dumps(active_domains or []),
+                    json.dumps(applied_domains or []),
+                    status,
+                    last_error,
+                )
+            )
+
+    def get_schedule_enforcement_statuses(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Return recent schedule enforcement states reported by student agents."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT student_id, active_domains, applied_domains, status, last_error, updated_at
+                FROM schedule_enforcement_status
+                ORDER BY datetime(updated_at) DESC
+                LIMIT ?
+                """,
+                (limit,)
+            )
+            rows = cursor.fetchall()
+
+            statuses = []
+            for row in rows:
+                item = dict(row)
+                for field in ("active_domains", "applied_domains"):
+                    try:
+                        item[field] = json.loads(item[field]) if item.get(field) else []
+                    except (json.JSONDecodeError, TypeError):
+                        item[field] = []
+                statuses.append(item)
+
+            return statuses
 
 # Global database instance
 db = Database()

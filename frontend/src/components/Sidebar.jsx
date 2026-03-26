@@ -6,7 +6,7 @@ import {
   Activity, 
   AlertTriangle, 
   Users, 
-  FileText,
+  Clock,
   Shield,
   LogOut
 } from 'lucide-react';
@@ -18,9 +18,9 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/network-health', icon: Activity, label: 'Network Health' },
+    { path: '/schedule', icon: Clock, label: 'Schedule' },
     { path: '/alerts', icon: AlertTriangle, label: 'Security Alerts' },
     { path: '/students', icon: Users, label: 'Endpoints' },
-    { path: '/reports', icon: FileText, label: 'Reports' },
   ];
 
   const isActive = (path) => location.pathname === path;
