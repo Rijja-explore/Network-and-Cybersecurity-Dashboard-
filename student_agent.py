@@ -1,4 +1,3 @@
-
 import psutil
 import socket
 import requests
@@ -16,7 +15,7 @@ from urllib.parse import urlparse
 # ============================================================
 # 🔧 CONFIGURATION
 # ============================================================
-BACKEND_SERVER_IP   = os.getenv("BACKEND_SERVER_IP", "10.85.231.252")
+BACKEND_SERVER_IP   = os.getenv("BACKEND_SERVER_IP", "ip_address")   
 BACKEND_SERVER_PORT = int(os.getenv("BACKEND_SERVER_PORT", "8000"))  # Updated to match backend default port
 
 SEND_INTERVAL = 3   # Send data every 3 seconds (FASTER for real-time alerts)

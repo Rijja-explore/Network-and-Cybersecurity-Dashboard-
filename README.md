@@ -193,14 +193,9 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
-# Create environment file
-copy .env.example .env
-
-# Run migrations (if needed)
-python migrate_db.py
 
 # Start backend server
-python main.py
+uvicorn main:app --reload --port 8000 --host 0.0.0.0
 ```
 
 ### Backend Setup (Linux/Mac)
@@ -216,14 +211,8 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create environment file
-cp .env.example .env
-
-# Run migrations (if needed)
-python migrate_db.py
-
-# Start backend server
-python main.py
+#Inorder to run the Backend
+uvicorn main:app --reload --port 8000 --host 0.0.0.0
 ```
 
 ### Frontend Setup
@@ -525,29 +514,4 @@ curl http://localhost:8000/alerts/active
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
----
 
-## 📞 Support
-
-For issues, questions, or suggestions:
-
-1. Check existing [GitHub Issues](https://github.com/yourusername/issues)
-2. Create a new issue with detailed description
-3. Include error logs and reproduction steps
-
----
-
-## 🔐 Security Notice
-
-This project is designed for **legitimate educational monitoring** only. Usage must comply with:
-
-- Local and federal privacy laws
-- Educational institution policies
-- FERPA (Family Educational Rights and Privacy Act) requirements
-- Explicit user consent and disclosure
-
-**Unauthorized monitoring is illegal.**
-
----
-
-**Last Updated**: March 26, 2026

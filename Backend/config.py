@@ -17,6 +17,7 @@ class Settings:
     APP_NAME: str = os.getenv("APP_NAME", "Department Network Monitoring Dashboard")
     APP_VERSION: str = os.getenv("APP_VERSION", "1.0.0")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
+    PORT: int = int(os.getenv("PORT", "8000"))  # Server port
     
     # Database Settings
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", "./monitoring.db")
